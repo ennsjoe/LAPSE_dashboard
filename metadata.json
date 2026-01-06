@@ -1,0 +1,5 @@
+{
+  "name": "LAPSE Dashboard",
+  "description": "An interactive tool to explore Canadian federal and British Columbia provincial legislation relevant to Pacific salmon conservation, mapped to management domains and IUCN threat categories.",
+  "requestFramePermissions": []
+}
