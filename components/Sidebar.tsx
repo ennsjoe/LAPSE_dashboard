@@ -19,10 +19,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect }) => {
           <button
             key={domain}
             onClick={() => onDomainSelect(domain)}
-            className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all duration-200 border border-transparent ${
+            className={`w-full text-left px-3 py-3 rounded-lg text-xs transition-all duration-200 border border-transparent ${
               activeDomain === domain
-                ? 'bg-blue-50 text-blue-700 font-semibold border-blue-100 shadow-sm'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-blue-50 text-blue-700 font-bold border-blue-100 shadow-sm'
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
             }`}
           >
             {domain}

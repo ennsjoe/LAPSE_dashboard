@@ -14,61 +14,58 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
   const keywordFreqData = useMemo(() => {
     const counts: Record<string, number> = {};
     data.forEach(item => {
-      // Only include management domain keywords
       const keywords = (item.management_domain_keywords?.split(';') || [])
-        .map(k => k.trim().toLowerCase())
-        .filter(k => k.length > 0);
-      
+        .map(k => k.trim())
+        .filter(k => k.length > 2);
       keywords.forEach(k => counts[k] = (counts[k] || 0) + 1);
     });
 
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+      .slice(0, 12);
   }, [data]);
 
-  const scopeData = useMemo(() => {
+  const threatData = useMemo(() => {
     const counts: Record<string, number> = {};
     data.forEach(item => {
-      const label = item.scope || "Unknown";
+      const label = item.iucn_threat || "Unspecified";
       counts[label] = (counts[label] || 0) + 1;
     });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
   }, [data]);
 
-  const COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'];
+  const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#475569'];
 
   if (data.length === 0) {
-    return (
-      <div className="bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 p-12 text-center text-gray-500">
-        <p className="text-lg">No data available for the current selection.</p>
-        <p className="text-sm">Try adjusting your filters or management domain.</p>
-      </div>
-    );
+    return <div className="p-12 text-center text-gray-400 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">No data to visualize.</div>;
   }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Keyword Frequency */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-        <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Top 10 Domain Keywords</h4>
-        <div className="h-64">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+          Most Frequent Domain Keywords
+        </h4>
+        <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={keywordFreqData} layout="vertical" margin={{ left: 10, right: 30 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+            <BarChart data={keywordFreqData} layout="vertical" margin={{ left: 0, right: 30 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
               <XAxis type="number" hide />
               <YAxis 
                 type="category" 
                 dataKey="name" 
-                width={80} 
-                tick={{ fontSize: 11 }} 
+                width={120} 
+                tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }} 
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip 
-                cursor={{ fill: '#f9fafb' }}
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                cursor={{ fill: '#f8fafc' }}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
               />
               <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
             </BarChart>
@@ -76,30 +73,37 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
         </div>
       </div>
 
-      {/* Scope Distribution */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-        <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Legislative Scope</h4>
-        <div className="h-64">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 bg-green-600 rounded-full"></span>
+          IUCN Threat Classification
+        </h4>
+        <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={scopeData}
+                data={threatData}
                 cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
+                cy="45%"
+                innerRadius={70}
+                outerRadius={95}
+                paddingAngle={4}
                 dataKey="value"
-                label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                stroke="none"
               >
-                {scopeData.map((entry, index) => (
+                {threatData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip 
-                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
               />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              <Legend 
+                verticalAlign="bottom" 
+                height={60} 
+                iconType="circle" 
+                wrapperStyle={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', paddingTop: '20px' }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
