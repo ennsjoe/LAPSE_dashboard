@@ -3,7 +3,7 @@
 ## Project Overview
 LAPSE Dashboard is an interactive React + TypeScript application that explores Canadian federal and British Columbia provincial legislation relevant to Pacific salmon conservation. It maps legislation to management domains and IUCN threat categories, enabling environmental policy research and analysis.
 
-**Tech Stack:** React 19, TypeScript, Vite, Recharts (visualizations), XLSX (file parsing), Google GenAI API
+**Tech Stack:** React 19, TypeScript, Vite, Recharts (visualizations), XLSX (file parsing)
 
 ## Architecture & Data Flow
 
@@ -60,20 +60,15 @@ Charts are responsive containers with custom Tooltip styling and color palettes.
 - **Static Asset Path:** Public assets (JSON, icons) served from `public/` folder
 - When deploying to different repo/domain, update `base` in vite.config.ts
 
-### Environment Variables
-- `GEMINI_API_KEY` - Set in `.env.local` for AI summary features (note: won't work on GitHub Pages; requires backend/serverless function)
-
 ## Important Constraints & Gotchas
 
 1. **JSON Loading Precedence:** App tries 3 paths: `LAPSE_compendium.json`, `./LAPSE_compendium.json`, `/LAPSE_compendium.json`. First successful fetch wins. Diagnostic logs added to UI for troubleshooting.
 
-2. **Client-Side API Calls:** Gemini API calls expose keys in frontend code; production GitHub Pages deployment requires separate backend or serverless endpoint.
+2. **TypeScript Strict Mode:** Project uses TypeScript ~5.8.2 with strict null checks. All component props must be properly typed with `React.FC<Props>` pattern.
 
-3. **TypeScript Strict Mode:** Project uses TypeScript ~5.8.2 with strict null checks. All component props must be properly typed with `React.FC<Props>` pattern.
+3. **Responsive Design:** Uses Tailwind CSS with mobile-first approach. Components adapt to viewport using flex/grid with responsive breakpoints (e.g., `lg:grid-cols-2`).
 
-4. **Responsive Design:** Uses Tailwind CSS with mobile-first approach. Components adapt to viewport using flex/grid with responsive breakpoints (e.g., `lg:grid-cols-2`).
-
-5. **Tab-Based Navigation:** Two tabs (`'dashboard'` and `'explorer'`) controlled via `activeTab` state. Component visibility toggled by tab value; state reset on tab change is often needed.
+4. **Tab-Based Navigation:** Two tabs (`'dashboard'` and `'explorer'`) controlled via `activeTab` state. Component visibility toggled by tab value; state reset on tab change is often needed.
 
 ## Common Development Tasks
 
