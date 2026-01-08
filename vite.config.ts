@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       // IMPORTANT: Change 'lapse-dashboard' to your actual GitHub repo name
-      base: process.env.NODE_ENV === 'production' ? '/lapse-dashboard/' : '/',
+      base: process.env.NODE_ENV === 'production' ? '/LAPSE_dashboard/' : '/',
       server: {
         port: 3000,
         host: '0.0.0.0',
