@@ -43,7 +43,7 @@ Filters use controlled component pattern: `useCallback` handlers update `FilterS
 Keywords are semicolon-separated strings. Always `.split(';').map(k => k.trim())` when parsing keyword fields. Example: `management_domain_keywords` contains domain-specific terms for visualization aggregation.
 
 ### Constants Organization
-Management domains, jurisdictions, and color mappings live in [constants.tsx](constants.tsx). When adding new filter dimensions or visualizations, extend this file. Jurisdiction color mapping uses Tailwind: `sky-700` (Federal), `green-700` (Provincial).
+Management domains, jurisdictions, and color mappings live in the constants file. When adding new filter dimensions or visualizations, extend this file. Jurisdiction color mapping uses Tailwind: `sky-700` (Federal), `green-700` (Provincial).
 
 ### Recharts Integration
 Charts are responsive containers with custom Tooltip styling and color palettes. Data arrays must be pre-sorted by descending value. Example from Visualizations: keyword frequency bars and IUCN threat pie chart both compute data in `useMemo` to avoid recalculation.
@@ -56,7 +56,7 @@ Charts are responsive containers with custom Tooltip styling and color palettes.
 - `npm run preview` - Preview production build locally
 
 ### Deployment Configuration
-- **GitHub Pages Base URL:** `/LAPSE_dashboard/` (configured in [vite.config.ts](vite.config.ts), line 9)
+- **GitHub Pages Base URL:** `/LAPSE_dashboard/` (configured in the vite config file, line 9)
 - **Static Asset Path:** Public assets (JSON, icons) served from `public/` folder
 - When deploying to different repo/domain, update `base` in vite.config.ts
 
