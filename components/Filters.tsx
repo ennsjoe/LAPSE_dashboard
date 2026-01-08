@@ -30,15 +30,40 @@ const Filters: React.FC<FiltersProps> = ({ filters, acts, legislations, onFilter
         </div>
       </div>
 
-      <div className="flex-1 min-w-[180px]">
-        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Jurisdiction</label>
-        <select 
-          value={filters.jurisdiction}
-          onChange={(e) => onFilterChange('jurisdiction', e.target.value)}
-          className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-        >
-          {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
-        </select>
+      <div className="flex flex-col gap-1.5">
+        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Jurisdiction</label>
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg p-1">
+          <button
+            onClick={() => onFilterChange('jurisdiction', 'All')}
+            className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
+              filters.jurisdiction === 'All'
+                ? 'bg-gray-400 text-white'
+                : 'bg-transparent text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Both
+          </button>
+          <button
+            onClick={() => onFilterChange('jurisdiction', 'Federal')}
+            style={{
+              backgroundColor: filters.jurisdiction === 'Federal' ? '#996666' : 'transparent',
+              color: filters.jurisdiction === 'Federal' ? 'white' : '#4b5563'
+            }}
+            className="flex-1 px-3 py-2 text-xs font-semibold rounded transition-all hover:bg-gray-200"
+          >
+            Federal
+          </button>
+          <button
+            onClick={() => onFilterChange('jurisdiction', 'Provincial')}
+            style={{
+              backgroundColor: filters.jurisdiction === 'Provincial' ? '#668899' : 'transparent',
+              color: filters.jurisdiction === 'Provincial' ? 'white' : '#4b5563'
+            }}
+            className="flex-1 px-3 py-2 text-xs font-semibold rounded transition-all hover:bg-gray-200"
+          >
+            Provincial
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 min-w-[200px]">
