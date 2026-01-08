@@ -1,7 +1,5 @@
-
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { GoogleGenAI } from "@google/genai";
 import { LegislationItem, FilterState, FilterOption, AppTab } from './types';
 import Sidebar from './components/Sidebar';
 import Filters from './components/Filters';
@@ -25,8 +23,6 @@ const App: React.FC = () => {
   const [showDeployGuide, setShowDeployGuide] = useState(false);
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
   
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [filters, setFilters] = useState<FilterState>({
@@ -45,7 +41,6 @@ const App: React.FC = () => {
       actName: 'All',
       legislationName: 'All'
     });
-    setAiSummary(null);
   }, []);
 
   const addDiag = (msg: string) => setDiagnostics(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
@@ -72,13 +67,13 @@ const App: React.FC = () => {
     setDiagnostics([]);
     
     addDiag("Starting automated data discovery...");
-    
-    // Check if we are running on file:// protocol
-    if (window.location.protocol === 'file:') {
-      addDiag("CRITICAL: Browsers block 'fetch' when opening files directly. Please use a local server or upload manually.");
-    }
 
-    const filesToTry = ['data.xlsx', 'data.csv', './data.xlsx', './data.csv'];
+    const filesToTry = [
+      'LAPSE_compendium.json',
+      './LAPSE_compendium.json',
+      '/LAPSE_compendium.json'
+    ];
+    
     let success = false;
 
     for (const filePath of filesToTry) {
@@ -91,13 +86,18 @@ const App: React.FC = () => {
           continue;
         }
 
-        addDiag(`Success! Fetching binary data for ${filePath}...`);
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        addDiag(`Success! Parsing JSON data...`);
+        const jsonData: LegislationItem[] = await response.json();
         
-        if (processWorkbook(workbook)) {
+        if (jsonData && jsonData.length > 0) {
+          addDiag(`Successfully loaded ${jsonData.length} records.`);
+          setData(jsonData);
+          setError(null);
+          setIsLoading(false);
           success = true;
           break;
+        } else {
+          addDiag(`Warning: JSON file appears to be empty.`);
         }
       } catch (err: any) {
         addDiag(`System Error: ${err.message || "Unknown Network Error"}`);
@@ -180,27 +180,7 @@ const App: React.FC = () => {
       ...(key === 'actName' ? { legislationName: 'All' } : {}),
       ...((key === 'managementDomain' || key === 'jurisdiction') ? { actName: 'All', legislationName: 'All' } : {})
     }));
-    setAiSummary(null);
   }, []);
-
-  const handleAiSummary = async () => {
-    if (filteredData.length === 0) return;
-    setIsGeneratingSummary(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Provide a concise 3-paragraph conservation policy summary for: ${filters.managementDomain} (${filters.jurisdiction}). Number of records: ${filteredData.length}. Focus on how these laws protect Pacific Salmon.`;
-      const response = await ai.models.generateContent({ 
-        model: 'gemini-3-flash-preview', 
-        contents: prompt 
-      });
-      setAiSummary(response.text || "Summary analysis could not be generated.");
-    } catch (err) {
-      console.error('AI Summary Error:', err);
-      setAiSummary("Insight engine currently unavailable. Please try again later.");
-    } finally {
-      setIsGeneratingSummary(false);
-    }
-  };
 
   const handleExport = () => {
     if (filteredData.length === 0) return;
@@ -406,33 +386,6 @@ const App: React.FC = () => {
             {activeTab === 'dashboard' ? (
               <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
                 <Visualizations data={filteredData} />
-                <div className="bg-white rounded-3xl border border-blue-50 p-8 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                        <span className="w-2 h-8 bg-blue-600 rounded-full mr-2"></span>
-                        AI Insight Synthesis
-                      </h3>
-                      <p className="text-xs text-gray-500 font-medium">Domain-specific policy interpretation engine</p>
-                    </div>
-                    <button 
-                      onClick={handleAiSummary} 
-                      disabled={isGeneratingSummary || filteredData.length === 0} 
-                      className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${
-                        isGeneratingSummary ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                      }`}
-                    >
-                      {isGeneratingSummary ? 'PROCESSING...' : 'SYNTHESIZE'}
-                    </button>
-                  </div>
-                  {aiSummary ? (
-                    <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap animate-in fade-in duration-700">{aiSummary}</div>
-                  ) : (
-                    <div className="py-12 border-2 border-dashed border-gray-100 rounded-2xl flex flex-col items-center justify-center text-center px-10">
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] max-w-xs">Select a management domain and click synthesize to reveal hidden legal patterns and trends.</p>
-                    </div>
-                  )}
-                </div>
               </div>
             ) : (
               <div className="animate-in slide-in-from-bottom-2 duration-500">
