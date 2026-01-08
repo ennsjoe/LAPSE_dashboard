@@ -37,7 +37,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
       .sort((a, b) => b.value - a.value);
   }, [data]);
 
-  const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#475569'];
+  const COLORS = ['#5FA3D0', '#6FA577', '#9BA8A0', '#A8B5C7', '#8A9FB3', '#7A8F8A', '#9BA39A', '#7FA89B'];
 
   if (data.length === 0) {
     return <div className="p-12 text-center text-gray-400 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">No data to visualize.</div>;
@@ -47,7 +47,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#5FA3D0' }}></span>
           Most Frequent Domain Keywords
         </h4>
         <div className="h-80">
@@ -67,7 +67,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
                 cursor={{ fill: '#f8fafc' }}
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
               />
-              <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="value" fill="#5FA3D0" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -75,7 +75,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-green-600 rounded-full"></span>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#6FA577' }}></span>
           IUCN Threat Classification
         </h4>
         <div className="h-80">

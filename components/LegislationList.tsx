@@ -16,7 +16,7 @@ const Highlight: React.FC<{ text: string; term: string }> = ({ text, term }) => 
     <>
       {parts.map((part, i) => 
         part.toLowerCase() === term.toLowerCase() 
-          ? <span key={i} className="bg-yellow-100 text-yellow-800 px-0.5 rounded font-medium">{part}</span> 
+          ? <span key={i} className="px-0.5 rounded font-medium" style={{ backgroundColor: '#E8F0F5', color: '#5FA3D0' }}>{part}</span> 
           : part
       )}
     </>
@@ -35,7 +35,8 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, on
         {onClear && (
           <button 
             onClick={onClear}
-            className="bg-gray-900 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-900/10"
+            className="text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl"
+            style={{ backgroundColor: '#6FA577' }}
           >
             Reset All Filters
           </button>

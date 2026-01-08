@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { LegislationItem, FilterState, FilterOption, AppTab } from './types';
+import { loadingBackgroundColor } from './constants';
 import Sidebar from './components/Sidebar';
 import Filters from './components/Filters';
 import Visualizations from './components/Visualizations';
@@ -13,6 +14,7 @@ const StatCard: React.FC<{ label: string; value: string | number; color: string;
   </div>
 );
 
+const loadingStyle = { backgroundColor: loadingBackgroundColor };
 const App: React.FC = () => {
   const [data, setData] = useState<LegislationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -218,7 +220,7 @@ const App: React.FC = () => {
           <button onClick={loadData} className="bg-gray-900 hover:bg-black text-white px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95">
             Retry Connection
           </button>
-          <button onClick={() => fileInputRef.current?.click()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95">
+          <button onClick={() => fileInputRef.current?.click()} className="text-white px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95" style={{ backgroundColor: '#5FA3D0' }}>
             Upload Manually
           </button>
           <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.csv" onChange={handleManualUpload} />
@@ -248,7 +250,8 @@ const App: React.FC = () => {
             </p>
             <button 
               onClick={() => setShowDisclaimer(false)} 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-blue-500/20 active:scale-[0.98]"
+              className="w-full text-white font-black py-4 rounded-2xl transition-all shadow-xl active:scale-[0.98]"
+              style={{ backgroundColor: '#5FA3D0', boxShadow: '0 20px 25px -5px rgba(95, 163, 208, 0.2)' }}
             >
               Enter Dashboard
             </button>
@@ -279,7 +282,7 @@ const App: React.FC = () => {
                     <li>Wait 1 minute, then check the <strong>Actions</strong> tab. A deployment runner will appear automatically.</li>
                   </ol>
                 </div>
-                <button onClick={() => setShowDeployGuide(false)} className="w-full py-3 bg-gray-100 rounded-xl font-bold text-xs uppercase hover:bg-gray-200 transition-colors">Back to About</button>
+                <button onClick={() => setShowDeployGuide(false)} className="w-full py-3 rounded-xl font-bold text-xs uppercase transition-colors" style={{ backgroundColor: '#E8F0F5', color: '#5FA3D0' }}>Back to About</button>
               </div>
             ) : (
               <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
@@ -294,7 +297,8 @@ const App: React.FC = () => {
                 <div className="flex gap-3 pt-6">
                   <button 
                     onClick={() => setShowDeployGuide(true)}
-                    className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
+                    className="flex-1 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all"
+                    style={{ backgroundColor: '#6FA577' }}
                   >
                     Deployment Help
                   </button>
@@ -313,7 +317,18 @@ const App: React.FC = () => {
 
       <header className="fixed top-0 left-0 right-0 bg-gray-900 text-white px-6 py-3 flex items-center justify-between shadow-lg z-30">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-inner cursor-pointer" onClick={() => window.location.reload()}>L</div>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner cursor-pointer relative" style={{ backgroundColor: '#4A5F7A' }} onClick={() => window.location.reload()}>
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              {/* Shield background */}
+              <path d="M12 2L3 6v6c0 7 9 10 9 10s9-3 9-10V6l-9-4z" fill="rgba(255,255,255,0.15)"/>
+              {/* Salmon body - curved from tail to head */}
+              <path d="M7 11c1-1 2-1.5 3-1.5 1 0 2 .5 3 1M10 10.5l2 1M9 12l2 1.5M8 13l2 1" stroke="white" strokeWidth="1.8"/>
+              {/* Salmon head/mouth */}
+              <circle cx="14" cy="11" r="1.5" fill="white" stroke="none"/>
+              {/* Tail fin */}
+              <path d="M7 11l-1.5 1.5M7 11l-1.5-1.5" stroke="white" strokeWidth="1.8"/>
+            </svg>
+          </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-black tracking-tight uppercase leading-none">LAPSE Dashboard</h1>
@@ -330,13 +345,15 @@ const App: React.FC = () => {
           <div className="flex bg-gray-800 p-1 rounded-xl">
             <button 
               onClick={() => setActiveTab('dashboard')} 
-              className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${activeTab === 'dashboard' ? 'text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              style={activeTab === 'dashboard' ? { backgroundColor: '#5FA3D0' } : {}}
             >
               Analytics
             </button>
             <button 
               onClick={() => setActiveTab('explorer')} 
-              className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${activeTab === 'explorer' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${activeTab === 'explorer' ? 'text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              style={activeTab === 'explorer' ? { backgroundColor: '#5FA3D0' } : {}}
             >
               Explorer
             </button>
@@ -373,7 +390,8 @@ const App: React.FC = () => {
                 <button 
                   onClick={handleExport}
                   disabled={filteredData.length === 0}
-                  className="bg-green-600 hover:bg-green-700 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-md shadow-green-500/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-white text-gray-900 font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border"
+                  style={{ borderColor: '#6FA577', color: '#6FA577', backgroundColor: '#F0F5F3' }}
                 >
                   Download XLSX
                 </button>

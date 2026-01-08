@@ -1,6 +1,12 @@
 
 import React from 'react';
 
+// Coastal/Pastel Color Scheme
+export const loadingBackgroundColor = '#8FADB8';
+export const accentColorPrimary = '#5FA3D0';
+export const accentColorSecondary = '#6FA577';
+export const chartColors = ['#5FA3D0', '#6FA577', '#9BA8A0', '#A8B5C7', '#8A9FB3', '#7A8F8A', '#9BA39A', '#7FA89B'];
+
 export const MANAGEMENT_DOMAINS = [
   "All",
   "Spatial Designation",

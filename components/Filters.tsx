@@ -37,9 +37,10 @@ const Filters: React.FC<FiltersProps> = ({ filters, acts, legislations, onFilter
             onClick={() => onFilterChange('jurisdiction', 'All')}
             className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
               filters.jurisdiction === 'All'
-                ? 'bg-gray-400 text-white'
-                : 'bg-transparent text-gray-600 hover:bg-gray-200'
+                ? 'text-white'
+              : 'bg-transparent text-gray-600 hover:bg-gray-200'
             }`}
+            style={filters.jurisdiction === 'All' ? { backgroundColor: '#A8B5C7' } : {}}
           >
             Both
           </button>
