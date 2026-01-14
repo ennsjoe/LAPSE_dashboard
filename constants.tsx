@@ -1,12 +1,34 @@
-
 import React from 'react';
 
-// Coastal/Pastel Color Scheme
-export const loadingBackgroundColor = '#8FADB8';
-export const accentColorPrimary = '#5FA3D0';
-export const accentColorSecondary = '#6FA577';
-export const chartColors = ['#5FA3D0', '#6FA577', '#9BA8A0', '#A8B5C7', '#8A9FB3', '#7A8F8A', '#9BA39A', '#7FA89B'];
+// ============================================================================
+// SHINY-MATCHING COLOR SCHEME
+// ============================================================================
 
+// Jurisdiction colors (matching R Shiny app)
+export const JURISDICTION_COLORS: Record<string, string> = {
+  Federal: "#996666",    // Muted salmon/maroon
+  Provincial: "#668899", // Slate blue
+  All: "#cccccc"         // Gray
+};
+
+// Loading/accent colors
+export const loadingBackgroundColor = '#f3f4f6';  // Light gray (simpler than before)
+export const accentColorPrimary = '#2c3e50';      // Dark blue-gray (Shiny's darkText)
+export const accentColorSecondary = '#668899';    // Provincial blue
+
+// Chart colors
+export const chartColors = [
+  '#2c3e50',  // Dark blue-gray (primary)
+  '#996666',  // Federal salmon
+  '#668899',  // Provincial blue
+  '#6FA577',  // Sage green
+  '#9BA8A0',  // Muted teal
+  '#A8B5C7',  // Dusty blue
+  '#8A9FB3',  // Steel blue
+  '#7A8F8A'   // Muted green
+];
+
+// Management domains list
 export const MANAGEMENT_DOMAINS = [
   "All",
   "Spatial Designation",
@@ -26,11 +48,46 @@ export const MANAGEMENT_DOMAINS = [
   "Pollution"
 ];
 
+// Jurisdiction options
 export const JURISDICTIONS = ["All", "Federal", "Provincial"];
 
-// Mapping of jurisdiction to color
-export const JURISDICTION_COLORS = {
-  Federal: "#0369a1", // sky-700
-  Provincial: "#15803d", // green-700
-  All: "#374151" // gray-700
+// ============================================================================
+// SHINY UI COLORS (for reference)
+// ============================================================================
+export const SHINY_COLORS = {
+  // Jurisdiction
+  federal: '#996666',
+  provincial: '#668899',
+  federalHover: '#aa7777',
+  provincialHover: '#7799aa',
+  allJurisdiction: '#cccccc',
+  
+  // Text
+  darkText: '#2c3e50',
+  
+  // Buttons
+  buttonDark: '#2c3e50',
+  linkButton: '#0074D9',
+  
+  // Disclaimer bar
+  disclaimerBg: '#fff3cd',
+  disclaimerBorder: '#ffc107',
+  disclaimerAccent: '#996666',
+  disclaimerText: '#664d03',
+  
+  // Data info bar
+  infoBarBg: '#e8f4f8',
+  infoBarBorder: '#668899',
+  
+  // Highlights
+  highlightSearch: '#ffff00',
+  highlightDomain: '#e8f4f8',
+  
+  // Badges
+  badgeOfficial: '#e3f2fd',
+  badgeOfficialText: '#1976d2',
+  badgeType: '#f3e5f5',
+  badgeTypeText: '#7b1fa2',
+  badgeDiscretion: '#fff3e0',
+  badgeDiscretionText: '#f57c00',
 };

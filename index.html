@@ -8,8 +8,71 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .highlight-domain { background-color: #fee2e2; color: #991b1b; padding: 0 2px; border-radius: 2px; border-bottom: 2px solid #ef4444; }
-        .highlight-clause { background-color: #dbeafe; color: #1e40af; padding: 0 2px; border-radius: 2px; border-bottom: 2px solid #3b82f6; }
+        
+        /* Shiny-matching search highlight - bright yellow like R Shiny app */
+        .highlight-search { 
+            background-color: #ffff00; 
+            font-weight: bold; 
+            padding: 2px 4px; 
+            border-radius: 3px; 
+        }
+        
+        /* Domain keyword highlight */
+        .highlight-domain { 
+            background-color: #e8f4f8; 
+            color: #668899; 
+            padding: 0 2px; 
+            border-radius: 2px; 
+            border-bottom: 2px solid #668899; 
+        }
+        
+        /* Clause type highlight */
+        .highlight-clause { 
+            background-color: #f3e5f5; 
+            color: #7b1fa2; 
+            padding: 0 2px; 
+            border-radius: 2px; 
+            border-bottom: 2px solid #7b1fa2; 
+        }
+        
+        /* Custom scrollbar styling */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        
+        /* Jurisdiction color classes matching Shiny */
+        .jurisdiction-federal {
+            border-left-color: #996666;
+        }
+        .jurisdiction-provincial {
+            border-left-color: #668899;
+        }
+        
+        /* Section hover effect */
+        .section-block:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Currency badge styling */
+        .currency-badge {
+            font-size: 0.75em;
+            background-color: #e0e0e0;
+            color: #555;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: normal;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">

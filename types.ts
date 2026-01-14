@@ -1,4 +1,3 @@
-
 export interface LegislationItem {
   id: string;
   jurisdiction: 'Federal' | 'Provincial';
@@ -14,6 +13,8 @@ export interface LegislationItem {
   management_domain_keywords: string;
   clause_type_keywords: string;
   aggregate_keywords?: string;
+  current_to_date?: string;  // Added: Date stamp for legislation currency
+  url?: string;              // Added: Link to full legislation source
 }
 
 export interface FilterState {
