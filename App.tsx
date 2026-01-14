@@ -122,7 +122,7 @@ interface SidebarProps {
 
 const Sidebar = memo<SidebarProps>(({ activeDomain, onDomainSelect }) => {
   return (
-    <aside className="w-48 flex-shrink-0 flex flex-col border-r border-gray-200 bg-white">
+    <aside className="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 bg-white">
       <div className="p-4 border-b border-gray-200">
         <h4 className="text-sm font-semibold" style={{ color: SHINY_COLORS.darkText }}>Management Domains</h4>
       </div>
@@ -931,7 +931,7 @@ const App: React.FC = () => {
         </main>
 
         {/* RIGHT PANEL */}
-        <aside className="w-96 flex-shrink-0 overflow-y-auto p-4 bg-gray-50">
+        <aside className="w-[28rem] flex-shrink-0 overflow-y-auto p-4 bg-gray-50">
           <Visualizations data={filteredData} />
         </aside>
       </div>
