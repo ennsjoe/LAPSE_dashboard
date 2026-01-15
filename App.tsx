@@ -231,10 +231,6 @@ const CollapsibleSection = memo<CollapsibleSectionProps>(({
   const [isOpen, setIsOpen] = useState(false);
   const borderColor = jurisdiction === 'Federal' ? SHINY_COLORS.federal : SHINY_COLORS.provincial;
 
-  const sectionLabel = showFullLabel 
-    ? `${actName} (${jurisdiction}) | ${legislationName} - Section ${section}`
-    : `Section ${section}`;
-
   return (
     <div 
       className="mb-3 rounded bg-white overflow-hidden transition-shadow hover:shadow-md"
@@ -249,11 +245,18 @@ const CollapsibleSection = memo<CollapsibleSectionProps>(({
         style={{ backgroundColor: '#f5f5f5' }}
       >
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-sm" style={{ color: SHINY_COLORS.darkText }}>
-            {sectionLabel}
-          </span>
-          {heading && (
-            <span className="text-sm text-gray-600 ml-2 truncate">- {heading}</span>
+          <div>
+            <span className="font-semibold text-sm" style={{ color: SHINY_COLORS.darkText }}>
+              Section {section}
+            </span>
+            {heading && (
+              <span className="text-sm text-gray-600 ml-2">- {heading}</span>
+            )}
+          </div>
+          {showFullLabel && (
+            <span className="text-xs italic text-gray-500 mt-1 block">
+              {actName} | {legislationName}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2 ml-4 flex-shrink-0">
@@ -869,7 +872,7 @@ const App: React.FC = () => {
                   >
                     {availableLegislation.map(l => (
                       <option key={l.name} value={l.name}>
-                        {l.name === 'All' ? '-- All Regulations --' : l.name} ({l.count})
+                        {l.name === 'All' ? '-- Act Only --' : l.name} ({l.count})
                       </option>
                     ))}
                   </select>
@@ -935,7 +938,7 @@ const App: React.FC = () => {
                     legislationName={item.legislation_name || ''}
                     searchTerm={debouncedSearchTerm}
                     currentToDate={item.current_to_date}
-                    showFullLabel={filters.actName === 'All' && !!debouncedSearchTerm}
+                    showFullLabel={filters.actName === 'All' && filters.legislationName === 'All'}
                   />
                 ))}
                 
