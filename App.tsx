@@ -492,6 +492,9 @@ const App: React.FC = () => {
   // PERFORMANCE: Pagination state
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   
+  // Collapsible top panel state
+  const [topPanelExpanded, setTopPanelExpanded] = useState(true);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [filters, setFilters] = useState<FilterState>({
@@ -740,26 +743,48 @@ const App: React.FC = () => {
 
       {/* DISCLAIMER & INFO BARS */}
       <div className="px-6 pt-4 flex-shrink-0 bg-gray-50">
-        <DisclaimerBar />
-        <DataInfoBar lastProcessed="2025-01-14" statuteCount={statuteCount} />
-        
-        {/* About Button */}
-        <div className="mb-4">
-          <a
-            href="https://ennsjoe.github.io/salmon_management_domains_compendium/LAPSE-Dashboard-About.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 text-white font-semibold rounded text-sm transition-colors"
-            style={{ backgroundColor: SHINY_COLORS.federal }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = SHINY_COLORS.federalHover}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = SHINY_COLORS.federal}
+        {/* Top Panel Toggle */}
+        <button
+          onClick={() => setTopPanelExpanded(!topPanelExpanded)}
+          className="mb-4 flex items-center gap-2 px-3 py-2 rounded transition-colors hover:bg-gray-200"
+          style={{ color: SHINY_COLORS.darkText }}
+        >
+          <svg 
+            className={`w-5 h-5 transition-transform ${topPanelExpanded ? 'rotate-180' : ''}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            About LAPSE Dashboard
-          </a>
-        </div>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+          </svg>
+          <span className="text-sm font-medium">
+            {topPanelExpanded ? 'Hide' : 'Show'} Panel
+          </span>
+        </button>
+
+        {/* Collapsible Content */}
+        {topPanelExpanded && (
+          <>
+            <DisclaimerBar />
+            <DataInfoBar lastProcessed="2025-01-14" statuteCount={statuteCount} />
+            
+            {/* About Button */}
+            <div className="mb-4">
+              <a
+                href="https://ennsjoe.github.io/salmon_management_domains_compendium/LAPSE-Dashboard-About.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-3 text-white font-semibold rounded text-sm transition-colors"
+                style={{ backgroundColor: SHINY_COLORS.federal }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = SHINY_COLORS.federalHover}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = SHINY_COLORS.federal}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                About LAPSE Dashboard
+              </a>
+            </div>
+          </>
+        )}
       </div>
 
       {/* MAIN THREE-COLUMN LAYOUT */}
