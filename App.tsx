@@ -31,6 +31,26 @@ const SHINY_COLORS = {
 const ITEMS_PER_PAGE = 50;
 
 // ============================================================================
+// UTILITY: NUMERIC SECTION COMPARATOR
+// ============================================================================
+function compareNumericSections(a: string | undefined, b: string | undefined): number {
+  const aStr = String(a || '');
+  const bStr = String(b || '');
+  
+  // Parse sections as numbers for comparison
+  const aNum = parseFloat(aStr);
+  const bNum = parseFloat(bStr);
+  
+  // If both parse as valid numbers, compare numerically
+  if (!isNaN(aNum) && !isNaN(bNum)) {
+    return aNum - bNum;
+  }
+  
+  // Otherwise fall back to string comparison
+  return aStr.localeCompare(bStr);
+}
+
+// ============================================================================
 // CUSTOM HOOK: DEBOUNCED VALUE
 // ============================================================================
 function useDebounce<T>(value: T, delay: number): T {
@@ -582,7 +602,7 @@ const App: React.FC = () => {
   // PERFORMANCE: Use debounced search term for filtering
   const filteredData = useMemo(() => {
     const term = debouncedSearchTerm.toLowerCase();
-    return data.filter(item => {
+    const filtered = data.filter(item => {
       const jMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       const dMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
       const aMatch = filters.actName === 'All' || item.act_name === filters.actName;
@@ -591,6 +611,9 @@ const App: React.FC = () => {
         `${item.act_name} ${item.legislation_name} ${item.heading} ${item.aggregate_paragraph}`.toLowerCase().includes(term);
       return jMatch && dMatch && aMatch && lMatch && sMatch;
     });
+    
+    // Sort by section numerically
+    return filtered.sort((a, b) => compareNumericSections(a.section, b.section));
   }, [filters.jurisdiction, filters.managementDomain, filters.actName, filters.legislationName, debouncedSearchTerm, data]);
 
   // PERFORMANCE: Only render visible items
