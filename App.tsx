@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import { LegislationItem, FilterState, FilterOption, AppTab } from './types';
 import { loadingBackgroundColor } from './constants';
 import Sidebar from './components/Sidebar';
@@ -7,12 +8,60 @@ import Filters from './components/Filters';
 import Visualizations from './components/Visualizations';
 import LegislationList from './components/LegislationList';
 
+// CSV row types
+interface LegislationMetadataRow {
+  legislation_id: string;
+  jurisdiction: string;
+  legislation_type: string;
+  act_name: string;
+  legislation_name: string;
+  url?: string;
+  agencies?: string;
+}
+
+interface ParagraphRow {
+  paragraph_id: string;
+  legislation_id: string;
+  section: string;
+  heading: string;
+  paragraph: string;
+}
+
+interface LabelRow {
+  label_id: string;
+  paragraph_id: string;
+  label_type: string;
+  label_value: string;
+  keyword: string;
+  scope: string;
+}
+
+interface ActionableClauseRow {
+  paragraph_id: string;
+  actionable_type: string;
+  responsible_official: string;
+  discretion_type: string;
+}
+
 const StatCard: React.FC<{ label: string; value: string | number; color: string; isText?: boolean }> = ({ label, value, color, isText }) => (
   <div className="flex-1 bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col transition-all hover:shadow-md">
     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">{label}</span>
     <span className={`text-xl font-black truncate ${isText ? 'text-gray-800' : `text-${color}-600`}`}>{value}</span>
   </div>
 );
+
+// Helper to parse CSV from URL
+const fetchCSV = <T,>(url: string): Promise<T[]> => {
+  return new Promise((resolve, reject) => {
+    Papa.parse<T>(url, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => resolve(results.data),
+      error: (error) => reject(error)
+    });
+  });
+};
 
 const loadingStyle = { backgroundColor: loadingBackgroundColor };
 const App: React.FC = () => {
@@ -68,46 +117,116 @@ const App: React.FC = () => {
     setError(null);
     setDiagnostics([]);
     
-    addDiag("Starting automated data discovery...");
+    addDiag("Starting CSV data load...");
 
-    const filesToTry = [
-      'LAPSE_compendium.json',
-      './LAPSE_compendium.json',
-      '/LAPSE_compendium.json'
-    ];
+    const basePath = './app_csv';
     
-    let success = false;
+    try {
+      // Load all CSVs in parallel
+      addDiag("Fetching legislation_metadata.csv...");
+      const metadataPromise = fetchCSV<LegislationMetadataRow>(`${basePath}/legislation_metadata.csv`);
+      
+      addDiag("Fetching paragraphs.csv...");
+      const paragraphsPromise = fetchCSV<ParagraphRow>(`${basePath}/paragraphs.csv`);
+      
+      addDiag("Fetching labels.csv...");
+      const labelsPromise = fetchCSV<LabelRow>(`${basePath}/labels.csv`);
+      
+      addDiag("Fetching actionable_clauses.csv...");
+      const actionablePromise = fetchCSV<ActionableClauseRow>(`${basePath}/actionable_clauses.csv`);
 
-    for (const filePath of filesToTry) {
-      try {
-        addDiag(`Attempting to fetch: ${filePath}`);
-        const response = await fetch(filePath);
+      const [metadata, paragraphs, labels, actionable] = await Promise.all([
+        metadataPromise,
+        paragraphsPromise,
+        labelsPromise,
+        actionablePromise
+      ]);
+
+      addDiag(`Loaded: ${metadata.length} legislation, ${paragraphs.length} paragraphs, ${labels.length} labels, ${actionable.length} actionable clauses`);
+
+      // Create lookup maps for efficient joining
+      addDiag("Building lookup maps...");
+      
+      const metadataMap = new Map<string, LegislationMetadataRow>();
+      metadata.forEach(row => metadataMap.set(row.legislation_id, row));
+
+      const actionableMap = new Map<string, ActionableClauseRow>();
+      actionable.forEach(row => actionableMap.set(row.paragraph_id, row));
+
+      // Group labels by paragraph_id
+      const labelsByParagraph = new Map<string, LabelRow[]>();
+      labels.forEach(row => {
+        const existing = labelsByParagraph.get(row.paragraph_id) || [];
+        existing.push(row);
+        labelsByParagraph.set(row.paragraph_id, existing);
+      });
+
+      // Join data: one row per paragraph + management domain combination
+      addDiag("Joining data...");
+      const joinedData: LegislationItem[] = [];
+
+      paragraphs.forEach(para => {
+        const legMeta = metadataMap.get(para.legislation_id);
+        if (!legMeta) return;
+
+        const paraLabels = labelsByParagraph.get(para.paragraph_id) || [];
+        const actionableInfo = actionableMap.get(para.paragraph_id);
+
+        // Get unique management domains for this paragraph
+        const managementDomains = paraLabels
+          .filter(l => l.label_type === 'Management Domain')
+          .map(l => l.label_value)
+          .filter((v, i, a) => a.indexOf(v) === i); // unique
+
+        // Get other label values
+        const iucnThreats = paraLabels
+          .filter(l => l.label_type === 'IUCN')
+          .map(l => l.label_value)
+          .filter((v, i, a) => a.indexOf(v) === i);
+
+        const clauseTypes = paraLabels
+          .filter(l => l.label_type === 'Clause Type')
+          .map(l => l.label_value)
+          .filter((v, i, a) => a.indexOf(v) === i);
+
+        const scopes = paraLabels
+          .map(l => l.scope)
+          .filter(s => s && s.trim() !== '')
+          .filter((v, i, a) => a.indexOf(v) === i);
+
+        // Create one row per management domain (or one row if no domains)
+        const domains = managementDomains.length > 0 ? managementDomains : [null];
         
-        if (!response.ok) {
-          addDiag(`Failed: HTTP ${response.status} (${response.statusText})`);
-          continue;
-        }
+        domains.forEach(domain => {
+          joinedData.push({
+            paragraph_id: para.paragraph_id,
+            legislation_id: para.legislation_id,
+            jurisdiction: legMeta.jurisdiction,
+            act_name: legMeta.act_name,
+            legislation_name: legMeta.legislation_name,
+            url: legMeta.url || '',
+            agency: legMeta.agencies || '',
+            section: para.section,
+            heading: para.heading,
+            aggregate_paragraph: para.paragraph,
+            management_domain: domain || '',
+            iucn_threat: iucnThreats.join('; '),
+            clause_type: clauseTypes.join('; '),
+            scope: scopes.join('; '),
+            actionable_type: actionableInfo?.actionable_type || '',
+            responsible_official: actionableInfo?.responsible_official || '',
+            discretion_type: actionableInfo?.discretion_type || ''
+          });
+        });
+      });
 
-        addDiag(`Success! Parsing JSON data...`);
-        const jsonData: LegislationItem[] = await response.json();
-        
-        if (jsonData && jsonData.length > 0) {
-          addDiag(`Successfully loaded ${jsonData.length} records.`);
-          setData(jsonData);
-          setError(null);
-          setIsLoading(false);
-          success = true;
-          break;
-        } else {
-          addDiag(`Warning: JSON file appears to be empty.`);
-        }
-      } catch (err: any) {
-        addDiag(`System Error: ${err.message || "Unknown Network Error"}`);
-      }
-    }
+      addDiag(`Successfully joined ${joinedData.length} records.`);
+      setData(joinedData);
+      setError(null);
+      setIsLoading(false);
 
-    if (!success) {
-      addDiag("Data discovery failed for all paths.");
+    } catch (err: any) {
+      addDiag(`Error loading CSVs: ${err.message || "Unknown error"}`);
       setError("DATA_NOT_FOUND");
       setIsLoading(false);
     }
@@ -198,7 +317,7 @@ const App: React.FC = () => {
       <div className="tracking-widest uppercase text-[10px] animate-pulse">Initializing LAPSE Portal...</div>
       <div className="mt-8 bg-gray-800 p-4 rounded-xl border border-gray-700 w-full max-w-sm text-left">
         <p className="text-[9px] text-blue-400 font-bold uppercase mb-2">Activity Monitor</p>
-        {diagnostics.slice(-3).map((d, i) => (
+        {diagnostics.slice(-5).map((d, i) => (
           <p key={i} className="text-[9px] text-gray-400 font-mono truncate">{d}</p>
         ))}
       </div>
