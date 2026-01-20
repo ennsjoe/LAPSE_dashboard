@@ -53,7 +53,8 @@ const App: React.FC = () => {
     
     addDiag("Starting JSON data load...");
 
-    const paths = ['full_data.json', './full_data.json', '/full_data.json'];
+    // Try gzipped version first (much smaller), then uncompressed
+    const paths = ['full_data.json.gz', 'full_data.json', './full_data.json', '/full_data.json'];
     
     for (const path of paths) {
       try {
@@ -65,6 +66,7 @@ const App: React.FC = () => {
           continue;
         }
         
+        addDiag(`Parsing data...`);
         const rawData = await response.json();
         const legislation = rawData.legislation || {};
         const paragraphs = rawData.paragraphs || {};
