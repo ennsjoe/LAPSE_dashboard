@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Filters from './components/Filters';
 import Visualizations from './components/Visualizations';
 import LegislationList from './components/LegislationList';
+import * as dataService from './services/dataService';
 
 const StatCard: React.FC<{ label: string; value: string | number; color: string; isText?: boolean }> = ({ label, value, color, isText }) => (
   <div className="flex-1 bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col transition-all hover:shadow-md">
@@ -19,7 +20,6 @@ const App: React.FC = () => {
   const [data, setData] = useState<LegislationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [diagnostics, setDiagnostics] = useState<string[]>([]);
   const [dataLastProcessed, setDataLastProcessed] = useState<string>('Unknown');
   const [totalLegislation, setTotalLegislation] = useState<number>(0);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -44,122 +44,26 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const addDiag = (msg: string) => setDiagnostics(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
-
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
-    setDiagnostics([]);
     
-    addDiag("Starting JSON data load...");
-
-    // Try gzipped version first (much smaller), then uncompressed
-    const paths = ['full_data.json.gz', 'full_data.json', './full_data.json', '/full_data.json'];
-    
-    for (const path of paths) {
-      try {
-        addDiag(`Trying to load from: ${path}`);
-        const response = await fetch(path);
-        
-        if (!response.ok) {
-          addDiag(`Failed to load from ${path}: ${response.status} ${response.statusText}`);
-          continue;
-        }
-        
-        addDiag(`Parsing data...`);
-        const rawData = await response.json();
-        const legislation = rawData.legislation || {};
-        const paragraphs = rawData.paragraphs || {};
-        const labels = Array.isArray(rawData.labels) ? rawData.labels : [];
-        const actionable = rawData.actionable || {};
-
-        // Group labels by paragraph id for quick lookup
-        const labelsByParagraph = new Map<number, any[]>();
-        labels.forEach((label: any) => {
-          if (!label || typeof label.pid !== 'number') return;
-          const existing = labelsByParagraph.get(label.pid) || [];
-          existing.push(label);
-          labelsByParagraph.set(label.pid, existing);
-        });
-
-        const joinedData: LegislationItem[] = [];
-        let idCounter = 1;
-
-        Object.entries(paragraphs).forEach(([pid, para]: [string, any]) => {
-          const legMeta = legislation[String(para.legislation_id)];
-          if (!legMeta) return;
-
-          const paraLabels = labelsByParagraph.get(Number(pid)) || [];
-
-          const managementDomains = Array.from(new Set(
-            paraLabels.filter(l => l.type === 'Management Domain').map(l => l.value)
-          )).filter(Boolean);
-
-          const iucnThreats = Array.from(new Set(
-            paraLabels.filter(l => l.type === 'IUCN').map(l => l.value)
-          )).filter(Boolean);
-
-          const clauseTypes = Array.from(new Set(
-            paraLabels.filter(l => l.type === 'Clause Type').map(l => l.value)
-          )).filter(Boolean);
-
-          const scopes = Array.from(new Set(
-            paraLabels.map(l => (l.scope || '').trim()).filter(Boolean)
-          ));
-
-          const managementKeywords = paraLabels
-            .filter(l => l.type === 'Management Domain')
-            .map(l => (l.keyword || '').trim())
-            .filter(Boolean)
-            .join('; ');
-
-          const clauseKeywords = paraLabels
-            .filter(l => l.type === 'Clause Type')
-            .map(l => (l.keyword || '').trim())
-            .filter(Boolean)
-            .join('; ');
-
-          const domains = managementDomains.length > 0 ? managementDomains : [''];
-
-          domains.forEach(domain => {
-            const actionableData = actionable[String(pid)] || {};
-            joinedData.push({
-              id: `${idCounter++}`,
-              jurisdiction: legMeta.jurisdiction as 'Federal' | 'Provincial',
-              act_name: legMeta.act_name,
-              legislation_name: legMeta.legislation_name,
-              section: para.section,
-              heading: para.heading,
-              aggregate_paragraph: para.paragraph,
-              management_domain: domain,
-              iucn_threat: iucnThreats.join('; '),
-              clause_type: clauseTypes.join('; '),
-              scope: scopes.join('; '),
-              management_domain_keywords: managementKeywords,
-              clause_type_keywords: clauseKeywords,
-              aggregate_keywords: '',
-              actionable_type: actionableData.actionable_type || '',
-              responsible_official: actionableData.responsible_official || '',
-              discretion_type: actionableData.discretion_type || ''
-            });
-          });
-        });
-
-        addDiag(`Successfully joined ${joinedData.length} records from ${path}`);
-        setData(joinedData);
-        setTotalLegislation(Object.keys(legislation).length);
-        setDataLastProcessed(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
-        setError(null);
-        setIsLoading(false);
-        return;
-      } catch (err: any) {
-        addDiag(`Error loading from ${path}: ${err.message}`);
-      }
+    try {
+      const legislationData = await dataService.loadLegislationData();
+      
+      // Count unique legislation records
+      const uniqueLegislationIds = new Set(legislationData.map(item => item.legislation_id));
+      
+      setData(legislationData);
+      setTotalLegislation(uniqueLegislationIds.size);
+      setDataLastProcessed(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+      setError(null);
+      setIsLoading(false);
+    } catch (err: any) {
+      console.error('Error loading data:', err);
+      setError("DATA_NOT_FOUND");
+      setIsLoading(false);
     }
-    
-    addDiag("All JSON load attempts failed.");
-    setError("DATA_NOT_FOUND");
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -168,37 +72,40 @@ const App: React.FC = () => {
 
   const filteredData = useMemo(() => {
     const term = filters.searchTerm.toLowerCase();
+    
     return data.filter(item => {
       const jMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       const dMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
       const aMatch = filters.actName === 'All' || item.act_name === filters.actName;
       const lMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
       const sMatch = !term || 
-        `${item.act_name} ${item.legislation_name} ${item.heading} ${item.aggregate_paragraph}`.toLowerCase().includes(term);
+        `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase().includes(term);
       return jMatch && dMatch && aMatch && lMatch && sMatch;
     });
   }, [filters, data]);
 
   const availableActs = useMemo<FilterOption[]>(() => {
-    const context = data.filter(item => 
-      (filters.managementDomain === 'All' || item.management_domain === filters.managementDomain) &&
-      (filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction)
-    );
+    const context = data.filter(item => {
+      const domainMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
+      const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      return domainMatch && jurisdictionMatch;
+    });
     const counts: Record<string, number> = {};
     context.forEach(d => { if (d.act_name) counts[d.act_name] = (counts[d.act_name] || 0) + 1; });
     return [{ name: 'All', count: context.length }, ...Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name))];
-  }, [data, filters.managementDomain, filters.jurisdiction]);
+  }, [data, filters.jurisdiction, filters.managementDomain]);
 
   const availableLegislation = useMemo<FilterOption[]>(() => {
-    const context = data.filter(item => 
-      (filters.managementDomain === 'All' || item.management_domain === filters.managementDomain) &&
-      (filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction) &&
-      (filters.actName === 'All' || item.act_name === filters.actName)
-    );
+    const context = data.filter(item => {
+      const domainMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
+      const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
+      return domainMatch && jurisdictionMatch && actMatch;
+    });
     const counts: Record<string, number> = {};
     context.forEach(d => { if (d.legislation_name) counts[d.legislation_name] = (counts[d.legislation_name] || 0) + 1; });
     return [{ name: 'All', count: context.length }, ...Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name))];
-  }, [data, filters.managementDomain, filters.jurisdiction, filters.actName]);
+  }, [data, filters.jurisdiction, filters.actName, filters.managementDomain]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({
@@ -220,13 +127,7 @@ const App: React.FC = () => {
   if (isLoading) return (
     <div className="h-screen flex flex-col items-center justify-center bg-gray-900 text-white font-black text-center px-6">
       <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <div className="tracking-widest uppercase text-[10px] animate-pulse">Initializing LAPSE Portal...</div>
-      <div className="mt-8 bg-gray-800 p-4 rounded-xl border border-gray-700 w-full max-w-sm text-left">
-        <p className="text-[9px] text-blue-400 font-bold uppercase mb-2">Activity Monitor</p>
-        {diagnostics.slice(-3).map((d, i) => (
-          <p key={i} className="text-[9px] text-gray-400 font-mono truncate">{d}</p>
-        ))}
-      </div>
+      <div className="tracking-widest uppercase text-[10px] animate-pulse">Loading LAPSE Data...</div>
     </div>
   );
   
@@ -248,12 +149,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-inner">
-          <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Diagnostic Trace</h3>
-          <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-            {diagnostics.map((diag, i) => (
-              <p key={i} className="text-[10px] text-gray-400 font-mono leading-tight">{diag}</p>
-            ))}
-          </div>
+          <p className="text-xs text-gray-400">Please ensure the CSV data files (paragraph_output.csv, legislation_output.csv, iucn_l2_keywords.csv, governance_keywords.csv) are available in the public directory.</p>
         </div>
       </div>
     </div>

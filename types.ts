@@ -1,22 +1,62 @@
 
 export interface LegislationItem {
   id: string;
+  paragraph_id: number;
+  legislation_id: number;
   jurisdiction: 'Federal' | 'Provincial';
+  legislation_type: string;
   act_name: string;
   legislation_name: string;
+  url: string;
+  agencies: string;
   section: string;
   heading: string;
-  aggregate_paragraph: string;
+  paragraph: string;
   management_domain: string;
-  iucn_threat: string;
+  mgmt_d_keyword: string;
   clause_type: string;
-  scope: string;
-  management_domain_keywords: string;
-  clause_type_keywords: string;
-  aggregate_keywords?: string;
+  clause_type_keyword: string;
   actionable_type?: string;
   responsible_official?: string;
   discretion_type?: string;
+  iucn_threat: string;
+  aggregate_keywords: string;
+}
+
+export interface ParagraphRow {
+  paragraph_id: string;
+  legislation_id: string;
+  section: string;
+  heading: string;
+  paragraph: string;
+  management_domain: string;
+  mgmt_d_keyword: string;
+  clause_type: string;
+  clause_type_keyword: string;
+  actionable_type: string;
+  responsible_official: string;
+  discretion_type: string;
+}
+
+export interface LegislationRow {
+  legislation_id: string;
+  jurisdiction: string;
+  legislation_type: string;
+  act_name: string;
+  legislation_name: string;
+  url: string;
+  agencies: string;
+}
+
+export interface IucnKeywordRow {
+  iucn_l2: string;
+  keyword: string;
+}
+
+export interface GovernanceKeywordRow {
+  management_domain: string;
+  keyword: string;
+  scope: string;
 }
 
 export interface FilterState {

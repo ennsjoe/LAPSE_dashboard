@@ -66,7 +66,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, on
           </div>
 
           <p className="text-[11px] text-gray-600 line-clamp-2 leading-tight mb-2">
-            <Highlight text={item.aggregate_paragraph || "Text summary unavailable"} term={searchTerm} />
+            <Highlight text={item.paragraph || "Text summary unavailable"} term={searchTerm} />
           </p>
 
           <div className="flex flex-wrap gap-1 text-[9px]">

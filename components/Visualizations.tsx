@@ -14,7 +14,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
   const keywordFreqData = useMemo(() => {
     const counts: Record<string, number> = {};
     data.forEach(item => {
-      const keywords = (item.management_domain_keywords?.split(';') || [])
+      const keywords = (item.mgmt_d_keyword?.split(';') || [])
         .map(k => k.trim())
         .filter(k => k.length > 2);
       keywords.forEach(k => counts[k] = (counts[k] || 0) + 1);

@@ -19,6 +19,12 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         outDir: 'dist',
-      }
+        rollupOptions: {
+          output: {
+            manualChunks: undefined,
+          }
+        }
+      },
+      publicDir: 'public', // Ensure public directory assets are copied to dist
     };
 });
