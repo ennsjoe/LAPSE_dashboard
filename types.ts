@@ -36,5 +36,3 @@ export interface ChartData {
   name: string;
   value: number;
 }
-
-export type AppTab = 'dashboard' | 'explorer';

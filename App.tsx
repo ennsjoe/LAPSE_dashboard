@@ -1,47 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
-import Papa from 'papaparse';
-import { LegislationItem, FilterState, FilterOption, AppTab } from './types';
+import { LegislationItem, FilterState, FilterOption } from './types';
 import { loadingBackgroundColor } from './constants';
 import Sidebar from './components/Sidebar';
 import Filters from './components/Filters';
 import Visualizations from './components/Visualizations';
 import LegislationList from './components/LegislationList';
-
-// CSV row types
-interface LegislationMetadataRow {
-  legislation_id: string;
-  jurisdiction: string;
-  legislation_type: string;
-  act_name: string;
-  legislation_name: string;
-  url?: string;
-  agencies?: string;
-}
-
-interface ParagraphRow {
-  paragraph_id: string;
-  legislation_id: string;
-  section: string;
-  heading: string;
-  paragraph: string;
-}
-
-interface LabelRow {
-  label_id: string;
-  paragraph_id: string;
-  label_type: string;
-  label_value: string;
-  keyword: string;
-  scope: string;
-}
-
-interface ActionableClauseRow {
-  paragraph_id: string;
-  actionable_type: string;
-  responsible_official: string;
-  discretion_type: string;
-}
 
 const StatCard: React.FC<{ label: string; value: string | number; color: string; isText?: boolean }> = ({ label, value, color, isText }) => (
   <div className="flex-1 bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col transition-all hover:shadow-md">
@@ -49,19 +13,6 @@ const StatCard: React.FC<{ label: string; value: string | number; color: string;
     <span className={`text-xl font-black truncate ${isText ? 'text-gray-800' : `text-${color}-600`}`}>{value}</span>
   </div>
 );
-
-// Helper to parse CSV from URL
-const fetchCSV = <T,>(url: string): Promise<T[]> => {
-  return new Promise((resolve, reject) => {
-    Papa.parse<T>(url, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => resolve(results.data),
-      error: (error) => reject(error)
-    });
-  });
-};
 
 const loadingStyle = { backgroundColor: loadingBackgroundColor };
 const App: React.FC = () => {
@@ -71,10 +22,9 @@ const App: React.FC = () => {
   const [diagnostics, setDiagnostics] = useState<string[]>([]);
   const [dataLastProcessed, setDataLastProcessed] = useState<string>('Unknown');
   const [totalLegislation, setTotalLegislation] = useState<number>(0);
-  const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showDeployGuide, setShowDeployGuide] = useState(false);
-  const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
 
   const [filters, setFilters] = useState<FilterState>({
     jurisdiction: 'All',
@@ -101,138 +51,113 @@ const App: React.FC = () => {
     setError(null);
     setDiagnostics([]);
     
-    addDiag("Starting CSV data load...");
+    addDiag("Starting JSON data load...");
 
-    const basePath = '.';
+    const paths = ['full_data.json', './full_data.json', '/full_data.json'];
     
-    try {
-      // Load all CSVs in parallel
-      addDiag("Fetching legislation_metadata.csv...");
-      const metadataPromise = fetchCSV<LegislationMetadataRow>(`${basePath}/legislation_metadata.csv`);
-      
-      addDiag("Fetching paragraphs.csv...");
-      const paragraphsPromise = fetchCSV<ParagraphRow>(`${basePath}/paragraphs.csv`);
-      
-      addDiag("Fetching labels.csv...");
-      const labelsPromise = fetchCSV<LabelRow>(`${basePath}/labels.csv`);
-      
-      addDiag("Fetching actionable_clauses.csv...");
-      const actionablePromise = fetchCSV<ActionableClauseRow>(`${basePath}/actionable_clauses.csv`);
-
-      const [metadata, paragraphs, labels, actionable] = await Promise.all([
-        metadataPromise,
-        paragraphsPromise,
-        labelsPromise,
-        actionablePromise
-      ]);
-
-      addDiag(`Loaded: ${metadata.length} legislation, ${paragraphs.length} paragraphs, ${labels.length} labels, ${actionable.length} actionable clauses`);
-
-      // Set metadata for display
-      setTotalLegislation(metadata.length);
-      setDataLastProcessed(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
-
-      // Create lookup maps for efficient joining
-      addDiag("Building lookup maps...");
-      
-      const metadataMap = new Map<string, LegislationMetadataRow>();
-      metadata.forEach(row => metadataMap.set(row.legislation_id, row));
-
-      const actionableMap = new Map<string, ActionableClauseRow>();
-      actionable.forEach(row => actionableMap.set(row.paragraph_id, row));
-
-      // Group labels by paragraph_id
-      const labelsByParagraph = new Map<string, LabelRow[]>();
-      labels.forEach(row => {
-        const existing = labelsByParagraph.get(row.paragraph_id) || [];
-        existing.push(row);
-        labelsByParagraph.set(row.paragraph_id, existing);
-      });
-
-      // Join data: one row per paragraph + management domain combination
-      addDiag("Joining data...");
-      const joinedData: LegislationItem[] = [];
-      let idCounter = 1;
-
-      paragraphs.forEach(para => {
-        const legMeta = metadataMap.get(para.legislation_id);
-        if (!legMeta) return;
-
-        const paraLabels = labelsByParagraph.get(para.paragraph_id) || [];
-
-        // Get unique management domains for this paragraph
-        const managementDomains = paraLabels
-          .filter(l => l.label_type === 'Management Domain')
-          .map(l => l.label_value)
-          .filter((v, i, a) => a.indexOf(v) === i); // unique
-
-        // Get other label values
-        const iucnThreats = paraLabels
-          .filter(l => l.label_type === 'IUCN')
-          .map(l => l.label_value)
-          .filter((v, i, a) => a.indexOf(v) === i);
-
-        const clauseTypes = paraLabels
-          .filter(l => l.label_type === 'Clause Type')
-          .map(l => l.label_value)
-          .filter((v, i, a) => a.indexOf(v) === i);
-
-        const scopes = paraLabels
-          .map(l => l.scope)
-          .filter(s => s && s.trim() !== '')
-          .filter((v, i, a) => a.indexOf(v) === i);
-
-        // Get keywords
-        const managementKeywords = paraLabels
-          .filter(l => l.label_type === 'Management Domain')
-          .map(l => l.keyword)
-          .filter(k => k && k.trim() !== '')
-          .join('; ');
-
-        const clauseKeywords = paraLabels
-          .filter(l => l.label_type === 'Clause Type')
-          .map(l => l.keyword)
-          .filter(k => k && k.trim() !== '')
-          .join('; ');
-
-        // Create one row per management domain (or one row if no domains)
-        const domains = managementDomains.length > 0 ? managementDomains : [''];
+    for (const path of paths) {
+      try {
+        addDiag(`Trying to load from: ${path}`);
+        const response = await fetch(path);
         
-        domains.forEach(domain => {
-          const actionableData = actionableMap.get(para.paragraph_id);
-          
-          joinedData.push({
-            id: `${idCounter++}`,
-            jurisdiction: legMeta.jurisdiction as 'Federal' | 'Provincial',
-            act_name: legMeta.act_name,
-            legislation_name: legMeta.legislation_name,
-            section: para.section,
-            heading: para.heading,
-            aggregate_paragraph: para.paragraph,
-            management_domain: domain,
-            iucn_threat: iucnThreats.join('; '),
-            clause_type: clauseTypes.join('; '),
-            scope: scopes.join('; '),
-            management_domain_keywords: managementKeywords,
-            clause_type_keywords: clauseKeywords,
-            aggregate_keywords: '',
-            actionable_type: actionableData?.actionable_type || '',
-            responsible_official: actionableData?.responsible_official || '',
-            discretion_type: actionableData?.discretion_type || ''
+        if (!response.ok) {
+          addDiag(`Failed to load from ${path}: ${response.status} ${response.statusText}`);
+          continue;
+        }
+        
+        const rawData = await response.json();
+        const legislation = rawData.legislation || {};
+        const paragraphs = rawData.paragraphs || {};
+        const labels = Array.isArray(rawData.labels) ? rawData.labels : [];
+        const actionable = rawData.actionable || {};
+
+        // Group labels by paragraph id for quick lookup
+        const labelsByParagraph = new Map<number, any[]>();
+        labels.forEach((label: any) => {
+          if (!label || typeof label.pid !== 'number') return;
+          const existing = labelsByParagraph.get(label.pid) || [];
+          existing.push(label);
+          labelsByParagraph.set(label.pid, existing);
+        });
+
+        const joinedData: LegislationItem[] = [];
+        let idCounter = 1;
+
+        Object.entries(paragraphs).forEach(([pid, para]: [string, any]) => {
+          const legMeta = legislation[String(para.legislation_id)];
+          if (!legMeta) return;
+
+          const paraLabels = labelsByParagraph.get(Number(pid)) || [];
+
+          const managementDomains = Array.from(new Set(
+            paraLabels.filter(l => l.type === 'Management Domain').map(l => l.value)
+          )).filter(Boolean);
+
+          const iucnThreats = Array.from(new Set(
+            paraLabels.filter(l => l.type === 'IUCN').map(l => l.value)
+          )).filter(Boolean);
+
+          const clauseTypes = Array.from(new Set(
+            paraLabels.filter(l => l.type === 'Clause Type').map(l => l.value)
+          )).filter(Boolean);
+
+          const scopes = Array.from(new Set(
+            paraLabels.map(l => (l.scope || '').trim()).filter(Boolean)
+          ));
+
+          const managementKeywords = paraLabels
+            .filter(l => l.type === 'Management Domain')
+            .map(l => (l.keyword || '').trim())
+            .filter(Boolean)
+            .join('; ');
+
+          const clauseKeywords = paraLabels
+            .filter(l => l.type === 'Clause Type')
+            .map(l => (l.keyword || '').trim())
+            .filter(Boolean)
+            .join('; ');
+
+          const domains = managementDomains.length > 0 ? managementDomains : [''];
+
+          domains.forEach(domain => {
+            const actionableData = actionable[String(pid)] || {};
+            joinedData.push({
+              id: `${idCounter++}`,
+              jurisdiction: legMeta.jurisdiction as 'Federal' | 'Provincial',
+              act_name: legMeta.act_name,
+              legislation_name: legMeta.legislation_name,
+              section: para.section,
+              heading: para.heading,
+              aggregate_paragraph: para.paragraph,
+              management_domain: domain,
+              iucn_threat: iucnThreats.join('; '),
+              clause_type: clauseTypes.join('; '),
+              scope: scopes.join('; '),
+              management_domain_keywords: managementKeywords,
+              clause_type_keywords: clauseKeywords,
+              aggregate_keywords: '',
+              actionable_type: actionableData.actionable_type || '',
+              responsible_official: actionableData.responsible_official || '',
+              discretion_type: actionableData.discretion_type || ''
+            });
           });
         });
-      });
 
-      addDiag(`Successfully joined ${joinedData.length} records.`);
-      setData(joinedData);
-      setError(null);
-      setIsLoading(false);
-
-    } catch (err: any) {
-      addDiag(`Error loading CSVs: ${err.message || "Unknown error"}`);
-      setError("DATA_NOT_FOUND");
-      setIsLoading(false);
+        addDiag(`Successfully joined ${joinedData.length} records from ${path}`);
+        setData(joinedData);
+        setTotalLegislation(Object.keys(legislation).length);
+        setDataLastProcessed(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+        setError(null);
+        setIsLoading(false);
+        return;
+      } catch (err: any) {
+        addDiag(`Error loading from ${path}: ${err.message}`);
+      }
     }
+    
+    addDiag("All JSON load attempts failed.");
+    setError("DATA_NOT_FOUND");
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -436,22 +361,6 @@ const App: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-6">
-          <div className="flex bg-gray-800 p-1 rounded-xl">
-            <button 
-              onClick={() => setActiveTab('dashboard')} 
-              className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${activeTab === 'dashboard' ? 'text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-              style={activeTab === 'dashboard' ? { backgroundColor: '#5FA3D0' } : {}}
-            >
-              Analytics
-            </button>
-            <button 
-              onClick={() => setActiveTab('explorer')} 
-              className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase transition-all ${activeTab === 'explorer' ? 'text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-              style={activeTab === 'explorer' ? { backgroundColor: '#5FA3D0' } : {}}
-            >
-              Explorer
-            </button>
-          </div>
           <button 
             onClick={() => setShowAbout(true)}
             className="text-gray-400 hover:text-white transition-all hover:scale-110"
@@ -522,15 +431,10 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {activeTab === 'dashboard' ? (
-              <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
-                <Visualizations data={filteredData} />
-              </div>
-            ) : (
-              <div className="animate-in slide-in-from-bottom-2 duration-500">
-                <LegislationList items={filteredData} searchTerm={filters.searchTerm} onClear={resetFilters} />
-              </div>
-            )}
+            <div className="space-y-6">
+              <Visualizations data={filteredData} />
+              <LegislationList items={filteredData} searchTerm={filters.searchTerm} onClear={resetFilters} />
+            </div>
           </div>
         </main>
       </div>
