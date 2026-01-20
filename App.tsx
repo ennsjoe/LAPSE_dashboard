@@ -260,7 +260,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden text-gray-900">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden text-gray-900">
       {showDisclaimer && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-10 transform scale-100 transition-transform">
@@ -336,109 +336,184 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <header className="fixed top-0 left-0 right-0 bg-gray-900 text-white px-6 py-3 flex items-center justify-between shadow-lg z-30">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner cursor-pointer relative" style={{ backgroundColor: '#4A5F7A' }} onClick={() => window.location.reload()}>
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              {/* Shield background */}
-              <path d="M12 2L3 6v6c0 7 9 10 9 10s9-3 9-10V6l-9-4z" fill="rgba(255,255,255,0.15)"/>
-              {/* Salmon body - curved from tail to head */}
-              <path d="M7 11c1-1 2-1.5 3-1.5 1 0 2 .5 3 1M10 10.5l2 1M9 12l2 1.5M8 13l2 1" stroke="white" strokeWidth="1.8"/>
-              {/* Salmon head/mouth */}
-              <circle cx="14" cy="11" r="1.5" fill="white" stroke="none"/>
-              {/* Tail fin */}
-              <path d="M7 11l-1.5 1.5M7 11l-1.5-1.5" stroke="white" strokeWidth="1.8"/>
-            </svg>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-black tracking-tight uppercase leading-none">LAPSE Dashboard</h1>
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/30">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-[8px] font-bold text-green-400 uppercase tracking-tighter">System Live</span>
-              </div>
-            </div>
-            <p className="text-[9px] text-blue-400 font-bold tracking-widest leading-none mt-1 uppercase">Pacific Salmon Policy Framework</p>
-          </div>
+      <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-black tracking-tight text-gray-900">Legislation Applicable to Pacific Salmon and Ecosystems (LAPSE)</h1>
         </div>
-        
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={() => setShowAbout(true)}
-            className="text-gray-400 hover:text-white transition-all hover:scale-110"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </button>
-        </div>
+        <button 
+          onClick={() => setShowAbout(true)}
+          className="text-gray-400 hover:text-gray-600 transition-all hover:scale-110"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </button>
       </header>
 
-      <div className="flex flex-1 pt-[64px] overflow-hidden">
+      {/* Disclaimer Bar */}
+      <div className="bg-yellow-50 border-l-4 border-yellow-500 px-5 py-3 flex items-start gap-3 border-b border-yellow-100">
+        <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+        <div className="text-xs text-yellow-900 leading-relaxed">
+          <strong className="font-black" style={{ color: '#996666' }}>Disclaimer:</strong> None of the information presented in LAPSE qualifies as legal advice. The authors are aquatic biologists with limited legal training. This tool is intended for research and informational purposes only. Always consult official government sources and qualified legal professionals for authoritative legal interpretation.
+        </div>
+      </div>
+      
+      {/* Data Provenance Info Bar */}
+      <div className="bg-blue-50 border-l-4 px-5 py-2.5 flex items-center gap-5 flex-wrap text-xs border-b border-blue-100" style={{ borderLeftColor: '#668899' }}>
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+          </svg>
+          <span className="text-gray-700"><strong style={{ color: '#668899' }}>Data Last Processed:</strong> {dataLastProcessed}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span className="text-gray-700"><strong style={{ color: '#668899' }}>Total Legislation:</strong> {totalLegislation} acts</span>
+        </div>
+      </div>
+
+      {/* Main content: 3-column layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left column: Domain sidebar */}
         <Sidebar activeDomain={filters.managementDomain} onDomainSelect={(d) => handleFilterChange('managementDomain', d)} />
 
-        <main className="flex-1 flex flex-col bg-white overflow-hidden">
-          {/* Disclaimer Bar */}
-          <div className="bg-yellow-50 border-l-4 border-yellow-500 px-5 py-3 flex items-start gap-3 border-b border-yellow-100">
-            <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <div className="text-xs text-yellow-900 leading-relaxed">
-              <strong className="font-black" style={{ color: '#996666' }}>Disclaimer:</strong> None of the information presented in LAPSE qualifies as legal advice. The authors are aquatic biologists with limited legal training. This tool is intended for research and informational purposes only. Always consult official government sources and qualified legal professionals for authoritative legal interpretation.
-            </div>
-          </div>
-          
-          {/* Data Provenance Info Bar */}
-          <div className="bg-blue-50 border-l-4 px-5 py-2.5 flex items-center gap-5 flex-wrap text-xs border-b border-blue-100" style={{ borderLeftColor: '#668899' }}>
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-              </svg>
-              <span className="text-gray-700"><strong style={{ color: '#668899' }}>Data Last Processed:</strong> {dataLastProcessed}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="text-gray-700"><strong style={{ color: '#668899' }}>Total Legislation:</strong> {totalLegislation} acts</span>
-            </div>
-          </div>
-
-
-          <div className="px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
-            <Filters 
-              filters={filters} 
-              acts={availableActs} 
-              legislations={availableLegislation} 
-              onFilterChange={handleFilterChange} 
-              onReset={resetFilters} 
-            />
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
-              <StatCard label="Matches Found" value={filteredData.length} color="blue" />
-              <StatCard label="Federal Jurisdiction" value={filteredData.filter(d => d.jurisdiction === 'Federal').length} color="blue" />
-              <StatCard label="Provincial Jurisdiction" value={filteredData.filter(d => d.jurisdiction === 'Provincial').length} color="blue" />
-              <div className="flex flex-col gap-2">
-                <button 
-                  onClick={handleExport}
-                  disabled={filteredData.length === 0}
-                  className="bg-white text-gray-900 font-black py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border"
-                  style={{ borderColor: '#6FA577', color: '#6FA577', backgroundColor: '#F0F5F3' }}
+        {/* Center column: Filters and legislation */}
+        <div className="flex-1 flex flex-col overflow-hidden border-r border-gray-200">
+          {/* Filters section */}
+          <div className="border-b border-gray-200 bg-white p-4 space-y-4 flex-shrink-0">
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-gray-700">Search Legislation</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text"
+                  value={filters.searchTerm}
+                  onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                  placeholder="Enter word or phrase to search..."
+                  className="flex-1 bg-gray-50 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <button
+                  onClick={() => handleFilterChange('searchTerm', '')}
+                  className="p-2 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                  title="Clear Search"
                 >
-                  Download XLSX
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
-                <div className="px-4 py-1.5 bg-white border border-gray-200 rounded-lg text-center">
-                   <span className="text-[9px] font-black text-gray-500 uppercase tracking-tighter">Domain: {filters.managementDomain}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-700">Filter by Jurisdiction</label>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => handleFilterChange('jurisdiction', 'All')}
+                  className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
+                    filters.jurisdiction === 'All' ? 'text-white' : 'text-gray-600'
+                  }`}
+                  style={filters.jurisdiction === 'All' ? { backgroundColor: '#A8B5C7' } : { backgroundColor: '#f3f4f6' }}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => handleFilterChange('jurisdiction', 'Federal')}
+                  className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
+                    filters.jurisdiction === 'Federal' ? 'text-white' : 'text-gray-600'
+                  }`}
+                  style={filters.jurisdiction === 'Federal' ? { backgroundColor: '#996666' } : { backgroundColor: '#f3f4f6' }}
+                >
+                  Federal
+                </button>
+                <button
+                  onClick={() => handleFilterChange('jurisdiction', 'Provincial')}
+                  className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
+                    filters.jurisdiction === 'Provincial' ? 'text-white' : 'text-gray-600'
+                  }`}
+                  style={filters.jurisdiction === 'Provincial' ? { backgroundColor: '#668899' } : { backgroundColor: '#f3f4f6' }}
+                >
+                  Provincial
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-700">Select Legislation</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Acts</label>
+                  <select 
+                    value={filters.actName}
+                    onChange={(e) => handleFilterChange('actName', e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    {availableActs.map(a => <option key={a.name} value={a.name}>{a.name} ({a.count})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600 mb-1 block">Regulations</label>
+                  <select 
+                    value={filters.legislationName}
+                    onChange={(e) => handleFilterChange('legislationName', e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    {availableLegislation.map(l => <option key={l.name} value={l.name}>{l.name} ({l.count})</option>)}
+                  </select>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6">
-              <Visualizations data={filteredData} />
-              <LegislationList items={filteredData} searchTerm={filters.searchTerm} onClear={resetFilters} />
-            </div>
+            <button 
+              onClick={resetFilters}
+              className="w-full px-3 py-2 text-xs font-bold text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+            >
+              Reset All Filters
+            </button>
           </div>
-        </main>
+
+          {/* Sections display */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <h3 className="font-bold text-gray-700 text-sm sticky top-0 bg-white py-2">Sections and Paragraphs</h3>
+            <LegislationList items={filteredData} searchTerm={filters.searchTerm} onClear={resetFilters} />
+          </div>
+        </div>
+
+        {/* Right column: Visualizations */}
+        <div className="w-80 flex flex-col bg-white overflow-hidden border-l border-gray-200">
+          <div className="border-b border-gray-200 px-4 py-3 font-bold text-gray-700 text-sm">
+            Results & Visualizations
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-gray-600 uppercase">Matches Found</div>
+              <div className="text-2xl font-black text-blue-600">{filteredData.length}</div>
+            </div>
+            <div className="h-px bg-gray-200"></div>
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-gray-600 uppercase">Jurisdiction Breakdown</div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Federal</span>
+                  <span className="font-bold" style={{ color: '#996666' }}>{filteredData.filter(d => d.jurisdiction === 'Federal').length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Provincial</span>
+                  <span className="font-bold" style={{ color: '#668899' }}>{filteredData.filter(d => d.jurisdiction === 'Provincial').length}</span>
+                </div>
+              </div>
+            </div>
+            <div className="h-px bg-gray-200"></div>
+            <button 
+              onClick={handleExport}
+              disabled={filteredData.length === 0}
+              className="w-full py-2 px-3 text-xs font-bold text-white rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#6FA577' }}
+            >
+              Download XLSX
+            </button>
+            <div className="h-px bg-gray-200"></div>
+            <Visualizations data={filteredData} />
+          </div>
+        </div>
       </div>
     </div>
   );

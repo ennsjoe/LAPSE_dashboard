@@ -23,7 +23,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 12);
+      .slice(0, 8);
   }, [data]);
 
   const threatData = useMemo(() => {
@@ -40,32 +40,31 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
   const COLORS = ['#5FA3D0', '#6FA577', '#9BA8A0', '#A8B5C7', '#8A9FB3', '#7A8F8A', '#9BA39A', '#7FA89B'];
 
   if (data.length === 0) {
-    return <div className="p-12 text-center text-gray-400 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">No data to visualize.</div>;
+    return <div className="p-6 text-center text-gray-400 text-sm">No data to visualize.</div>;
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#5FA3D0' }}></span>
-          Most Frequent Domain Keywords
+    <div className="space-y-4">
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-widest mb-3">
+          Keyword Frequency
         </h4>
-        <div className="h-80">
+        <div style={{ height: '180px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={keywordFreqData} layout="vertical" margin={{ left: 0, right: 30 }}>
+            <BarChart data={keywordFreqData} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
               <XAxis type="number" hide />
               <YAxis 
                 type="category" 
                 dataKey="name" 
-                width={120} 
-                tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }} 
+                width={80} 
+                tick={{ fontSize: 9, fontWeight: 600, fill: '#64748b' }} 
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip 
                 cursor={{ fill: '#f8fafc' }}
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
               />
               <Bar dataKey="value" fill="#5FA3D0" radius={[0, 4, 4, 0]} />
             </BarChart>
@@ -73,21 +72,20 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#6FA577' }}></span>
-          IUCN Threat Classification
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-widest mb-3">
+          IUCN Threats
         </h4>
-        <div className="h-80">
+        <div style={{ height: '160px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={threatData}
                 cx="50%"
-                cy="45%"
-                innerRadius={70}
-                outerRadius={95}
-                paddingAngle={4}
+                cy="50%"
+                innerRadius={40}
+                outerRadius={60}
+                paddingAngle={2}
                 dataKey="value"
                 stroke="none"
               >
@@ -96,13 +94,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
                 ))}
               </Pie>
               <Tooltip 
-                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-              />
-              <Legend 
-                verticalAlign="bottom" 
-                height={60} 
-                iconType="circle" 
-                wrapperStyle={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', paddingTop: '20px' }}
+                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
               />
             </PieChart>
           </ResponsiveContainer>
