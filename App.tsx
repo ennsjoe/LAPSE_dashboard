@@ -73,8 +73,6 @@ const App: React.FC = () => {
   const [showAbout, setShowAbout] = useState(false);
   const [showDeployGuide, setShowDeployGuide] = useState(false);
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [filters, setFilters] = useState<FilterState>({
     jurisdiction: 'All',
@@ -95,22 +93,6 @@ const App: React.FC = () => {
   }, []);
 
   const addDiag = (msg: string) => setDiagnostics(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
-
-  const processWorkbook = (workbook: XLSX.WorkBook) => {
-    const sheetName = workbook.SheetNames[0];
-    addDiag(`Reading sheet: "${sheetName}"`);
-    const jsonData = XLSX.utils.sheet_to_json<LegislationItem>(workbook.Sheets[sheetName]);
-    
-    if (jsonData && jsonData.length > 0) {
-      addDiag(`Successfully parsed ${jsonData.length} records.`);
-      setData(jsonData);
-      setError(null);
-      setIsLoading(false);
-      return true;
-    }
-    addDiag(`Warning: Sheet "${sheetName}" appears to be empty.`);
-    return false;
-  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -236,30 +218,6 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  const handleManualUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    addDiag(`Manual upload initiated: ${file.name}`);
-    setIsLoading(true);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const workbook = XLSX.read(bstr, { type: 'binary' });
-        if (!processWorkbook(workbook)) {
-          setError("INVALID_FILE_FORMAT");
-          setIsLoading(false);
-        }
-      } catch (err) {
-        addDiag(`Upload Error: ${err}`);
-        setError("UPLOAD_FAILED");
-        setIsLoading(false);
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
-
   const filteredData = useMemo(() => {
     const term = filters.searchTerm.toLowerCase();
     return data.filter(item => {
@@ -335,14 +293,10 @@ const App: React.FC = () => {
           The app is present, but the legislative dataset could not be parsed.
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <button onClick={loadData} className="bg-gray-900 hover:bg-black text-white px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95">
+        <div className="mb-8">
+          <button onClick={loadData} className="w-full bg-gray-900 hover:bg-black text-white px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95">
             Retry Connection
           </button>
-          <button onClick={() => fileInputRef.current?.click()} className="text-white px-6 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all active:scale-95" style={{ backgroundColor: '#5FA3D0' }}>
-            Upload Manually
-          </button>
-          <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.csv" onChange={handleManualUpload} />
         </div>
 
         <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-inner">
