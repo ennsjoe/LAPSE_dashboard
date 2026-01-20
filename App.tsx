@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { LegislationItem, FilterState, FilterOption, AppTab } from './types';
@@ -69,6 +69,8 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState<string[]>([]);
+  const [dataLastProcessed, setDataLastProcessed] = useState<string>('Unknown');
+  const [totalLegislation, setTotalLegislation] = useState<number>(0);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [showAbout, setShowAbout] = useState(false);
   const [showDeployGuide, setShowDeployGuide] = useState(false);
@@ -101,7 +103,7 @@ const App: React.FC = () => {
     
     addDiag("Starting CSV data load...");
 
-    const basePath = './app_csv';
+    const basePath = '.';
     
     try {
       // Load all CSVs in parallel
@@ -126,6 +128,10 @@ const App: React.FC = () => {
 
       addDiag(`Loaded: ${metadata.length} legislation, ${paragraphs.length} paragraphs, ${labels.length} labels, ${actionable.length} actionable clauses`);
 
+      // Set metadata for display
+      setTotalLegislation(metadata.length);
+      setDataLastProcessed(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+
       // Create lookup maps for efficient joining
       addDiag("Building lookup maps...");
       
@@ -146,13 +152,13 @@ const App: React.FC = () => {
       // Join data: one row per paragraph + management domain combination
       addDiag("Joining data...");
       const joinedData: LegislationItem[] = [];
+      let idCounter = 1;
 
       paragraphs.forEach(para => {
         const legMeta = metadataMap.get(para.legislation_id);
         if (!legMeta) return;
 
         const paraLabels = labelsByParagraph.get(para.paragraph_id) || [];
-        const actionableInfo = actionableMap.get(para.paragraph_id);
 
         // Get unique management domains for this paragraph
         const managementDomains = paraLabels
@@ -176,28 +182,43 @@ const App: React.FC = () => {
           .filter(s => s && s.trim() !== '')
           .filter((v, i, a) => a.indexOf(v) === i);
 
+        // Get keywords
+        const managementKeywords = paraLabels
+          .filter(l => l.label_type === 'Management Domain')
+          .map(l => l.keyword)
+          .filter(k => k && k.trim() !== '')
+          .join('; ');
+
+        const clauseKeywords = paraLabels
+          .filter(l => l.label_type === 'Clause Type')
+          .map(l => l.keyword)
+          .filter(k => k && k.trim() !== '')
+          .join('; ');
+
         // Create one row per management domain (or one row if no domains)
-        const domains = managementDomains.length > 0 ? managementDomains : [null];
+        const domains = managementDomains.length > 0 ? managementDomains : [''];
         
         domains.forEach(domain => {
+          const actionableData = actionableMap.get(para.paragraph_id);
+          
           joinedData.push({
-            paragraph_id: para.paragraph_id,
-            legislation_id: para.legislation_id,
-            jurisdiction: legMeta.jurisdiction,
+            id: `${idCounter++}`,
+            jurisdiction: legMeta.jurisdiction as 'Federal' | 'Provincial',
             act_name: legMeta.act_name,
             legislation_name: legMeta.legislation_name,
-            url: legMeta.url || '',
-            agency: legMeta.agencies || '',
             section: para.section,
             heading: para.heading,
             aggregate_paragraph: para.paragraph,
-            management_domain: domain || '',
+            management_domain: domain,
             iucn_threat: iucnThreats.join('; '),
             clause_type: clauseTypes.join('; '),
             scope: scopes.join('; '),
-            actionable_type: actionableInfo?.actionable_type || '',
-            responsible_official: actionableInfo?.responsible_official || '',
-            discretion_type: actionableInfo?.discretion_type || ''
+            management_domain_keywords: managementKeywords,
+            clause_type_keywords: clauseKeywords,
+            aggregate_keywords: '',
+            actionable_type: actionableData?.actionable_type || '',
+            responsible_official: actionableData?.responsible_official || '',
+            discretion_type: actionableData?.discretion_type || ''
           });
         });
       });
@@ -275,7 +296,7 @@ const App: React.FC = () => {
       <div className="tracking-widest uppercase text-[10px] animate-pulse">Initializing LAPSE Portal...</div>
       <div className="mt-8 bg-gray-800 p-4 rounded-xl border border-gray-700 w-full max-w-sm text-left">
         <p className="text-[9px] text-blue-400 font-bold uppercase mb-2">Activity Monitor</p>
-        {diagnostics.slice(-5).map((d, i) => (
+        {diagnostics.slice(-3).map((d, i) => (
           <p key={i} className="text-[9px] text-gray-400 font-mono truncate">{d}</p>
         ))}
       </div>
@@ -444,6 +465,33 @@ const App: React.FC = () => {
         <Sidebar activeDomain={filters.managementDomain} onDomainSelect={(d) => handleFilterChange('managementDomain', d)} />
 
         <main className="flex-1 flex flex-col bg-white overflow-hidden">
+          {/* Disclaimer Bar */}
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 px-5 py-3 flex items-start gap-3 border-b border-yellow-100">
+            <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div className="text-xs text-yellow-900 leading-relaxed">
+              <strong className="font-black" style={{ color: '#996666' }}>Disclaimer:</strong> None of the information presented in LAPSE qualifies as legal advice. The authors are aquatic biologists with limited legal training. This tool is intended for research and informational purposes only. Always consult official government sources and qualified legal professionals for authoritative legal interpretation.
+            </div>
+          </div>
+          
+          {/* Data Provenance Info Bar */}
+          <div className="bg-blue-50 border-l-4 px-5 py-2.5 flex items-center gap-5 flex-wrap text-xs border-b border-blue-100" style={{ borderLeftColor: '#668899' }}>
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+              </svg>
+              <span className="text-gray-700"><strong style={{ color: '#668899' }}>Data Last Processed:</strong> {dataLastProcessed}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-gray-700"><strong style={{ color: '#668899' }}>Total Legislation:</strong> {totalLegislation} acts</span>
+            </div>
+          </div>
+
+
           <div className="px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
             <Filters 
               filters={filters} 
