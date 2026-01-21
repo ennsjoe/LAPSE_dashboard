@@ -27,6 +27,8 @@ const App: React.FC = () => {
   const [showDeployGuide, setShowDeployGuide] = useState(false);
   const [disclaimerCollapsed, setDisclaimerCollapsed] = useState(false);
   const [infoPanelCollapsed, setInfoPanelCollapsed] = useState(false);
+  const [legislationCollapsed, setLegislationCollapsed] = useState(false);
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
 
   const [filters, setFilters] = useState<FilterState>({
     jurisdiction: 'All',
@@ -36,6 +38,14 @@ const App: React.FC = () => {
     legislationName: 'All'
   });
 
+  // Debounce search term updates
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters(prev => ({ ...prev, searchTerm: localSearchTerm }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearchTerm]);
+
   const resetFilters = useCallback(() => {
     setFilters({
       jurisdiction: 'All',
@@ -44,6 +54,7 @@ const App: React.FC = () => {
       actName: 'All',
       legislationName: 'All'
     });
+    setLocalSearchTerm('');
   }, []);
 
   const loadData = async () => {
@@ -98,9 +109,14 @@ const App: React.FC = () => {
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       return domainMatch && jurisdictionMatch;
     });
-    const counts: Record<string, number> = {};
-    context.forEach(d => { if (d.act_name) counts[d.act_name] = (counts[d.act_name] || 0) + 1; });
-    return [{ name: 'All', count: context.length }, ...Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name))];
+    const uniqueActs = Array.from(new Set(context.map(d => d.act_name).filter(Boolean)));
+    const result = [
+      { name: 'All', count: uniqueActs.length },
+      ...uniqueActs
+        .map(name => ({ name, count: 1 }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    ];
+    return result.map(item => item.name === 'All' ? { name: 'All', displayName: 'None Selected', count: item.count } : { ...item, displayName: item.name });
   }, [data, filters.jurisdiction, filters.managementDomain]);
 
   const availableLegislation = useMemo<FilterOption[]>(() => {
@@ -108,13 +124,19 @@ const App: React.FC = () => {
       const domainMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
-      // Only show regulations and orders, not Acts
-      const isRegulation = item.legislation_type !== 'Act';
+      // Include regulations, codes, and orders (exclude Acts)
+      const type = (item.legislation_type || '').toLowerCase();
+      const isRegulation = type !== 'act' && (type.includes('regulation') || type.includes('code') || type.includes('order') || type.length > 0);
       return domainMatch && jurisdictionMatch && actMatch && isRegulation;
     });
-    const counts: Record<string, number> = {};
-    context.forEach(d => { if (d.legislation_name) counts[d.legislation_name] = (counts[d.legislation_name] || 0) + 1; });
-    return [{ name: 'All', count: context.length }, ...Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name))];
+    const uniqueRegs = Array.from(new Set(context.map(d => d.legislation_name).filter(Boolean)));
+    const result = [
+      { name: 'All', count: uniqueRegs.length },
+      ...uniqueRegs
+        .map(name => ({ name, count: 1 }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    ];
+    return result.map(item => item.name === 'All' ? { name: 'All', displayName: 'None Selected', count: item.count } : { ...item, displayName: item.name });
   }, [data, filters.jurisdiction, filters.actName, filters.managementDomain]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
@@ -340,104 +362,120 @@ const App: React.FC = () => {
       {/* Main content: 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left column: Domain sidebar */}
-        <Sidebar activeDomain={filters.managementDomain} onDomainSelect={(d) => handleFilterChange('managementDomain', d)} />
+        <Sidebar 
+          activeDomain={filters.managementDomain} 
+          onDomainSelect={(d) => handleFilterChange('managementDomain', d)}
+          searchTerm={localSearchTerm}
+          onSearchChange={setLocalSearchTerm}
+        />
 
         {/* Center column: Filters and legislation */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-gray-200">
-          {/* Filters section */}
-          <div className="border-b border-gray-200 bg-white p-4 space-y-4 flex-shrink-0">
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-gray-700">Search Legislation</label>
-              <div className="flex items-center gap-2">
-                <input 
-                  type="text"
-                  value={filters.searchTerm}
-                  onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                  placeholder="Enter word or phrase to search..."
-                  className="flex-1 bg-gray-50 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <button
-                  onClick={() => handleFilterChange('searchTerm', '')}
-                  className="p-2 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                  title="Clear Search"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">Filter by Jurisdiction</label>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => handleFilterChange('jurisdiction', 'All')}
-                  className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
-                    filters.jurisdiction === 'All' ? 'text-white' : 'text-gray-600'
-                  }`}
-                  style={filters.jurisdiction === 'All' ? { backgroundColor: '#A8B5C7' } : { backgroundColor: '#f3f4f6' }}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => handleFilterChange('jurisdiction', 'Federal')}
-                  className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
-                    filters.jurisdiction === 'Federal' ? 'text-white' : 'text-gray-600'
-                  }`}
-                  style={filters.jurisdiction === 'Federal' ? { backgroundColor: '#996666' } : { backgroundColor: '#f3f4f6' }}
-                >
-                  Federal
-                </button>
-                <button
-                  onClick={() => handleFilterChange('jurisdiction', 'Provincial')}
-                  className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
-                    filters.jurisdiction === 'Provincial' ? 'text-white' : 'text-gray-600'
-                  }`}
-                  style={filters.jurisdiction === 'Provincial' ? { backgroundColor: '#668899' } : { backgroundColor: '#f3f4f6' }}
-                >
-                  Provincial
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">Select Legislation</label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Acts</label>
-                  <select 
-                    value={filters.actName}
-                    onChange={(e) => handleFilterChange('actName', e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                    {availableActs.map(a => <option key={a.name} value={a.name}>{a.name} ({a.count})</option>)}
-                  </select>
+          <div className="border-b border-gray-200 bg-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+            <h3 className="font-bold text-gray-800 text-sm">Legislation Panel</h3>
+            <div className="flex items-center gap-4">
+              {legislationCollapsed && (
+                <div className="text-[11px] text-gray-600 flex items-center gap-3">
+                  <span className="font-semibold">Act:</span>
+                  <span className="text-gray-800">{filters.actName === 'All' ? 'None Selected' : filters.actName}</span>
+                  <span className="font-semibold">Reg:</span>
+                  <span className="text-gray-800">{filters.legislationName === 'All' ? 'None Selected' : filters.legislationName}</span>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Regulations</label>
-                  <select 
-                    value={filters.legislationName}
-                    onChange={(e) => handleFilterChange('legislationName', e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                    {availableLegislation.map(l => <option key={l.name} value={l.name}>{l.name} ({l.count})</option>)}
-                  </select>
-                </div>
-              </div>
+              )}
+              <button
+                onClick={() => setLegislationCollapsed(!legislationCollapsed)}
+                className="text-xs font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-2"
+              >
+                {legislationCollapsed ? 'Expand' : 'Collapse'}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {legislationCollapsed ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  )}
+                </svg>
+              </button>
             </div>
-
-            <button 
-              onClick={resetFilters}
-              className="w-full px-3 py-2 text-xs font-bold text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-            >
-              Reset All Filters
-            </button>
           </div>
 
-          {/* Sections display */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <h3 className="font-bold text-gray-700 text-sm sticky top-0 bg-white py-2">Sections and Paragraphs</h3>
-            <LegislationList items={filteredData} searchTerm={filters.searchTerm} onClear={resetFilters} />
-          </div>
+          {!legislationCollapsed && (
+            <>
+              {/* Filters section */}
+              <div className="border-b border-gray-200 bg-white p-4 space-y-4 flex-shrink-0">
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-gray-700">Filter by Jurisdiction</label>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleFilterChange('jurisdiction', 'All')}
+                      className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
+                        filters.jurisdiction === 'All' ? 'text-white' : 'text-gray-600'
+                      }`}
+                      style={filters.jurisdiction === 'All' ? { backgroundColor: '#A8B5C7' } : { backgroundColor: '#f3f4f6' }}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => handleFilterChange('jurisdiction', 'Federal')}
+                      className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
+                        filters.jurisdiction === 'Federal' ? 'text-white' : 'text-gray-600'
+                      }`}
+                      style={filters.jurisdiction === 'Federal' ? { backgroundColor: '#996666' } : { backgroundColor: '#f3f4f6' }}
+                    >
+                      Federal
+                    </button>
+                    <button
+                      onClick={() => handleFilterChange('jurisdiction', 'Provincial')}
+                      className={`flex-1 px-3 py-2 text-xs font-semibold rounded transition-all ${
+                        filters.jurisdiction === 'Provincial' ? 'text-white' : 'text-gray-600'
+                      }`}
+                      style={filters.jurisdiction === 'Provincial' ? { backgroundColor: '#668899' } : { backgroundColor: '#f3f4f6' }}
+                    >
+                      Provincial
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-gray-700">Select Legislation</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Acts</label>
+                      <select 
+                        value={filters.actName}
+                        onChange={(e) => handleFilterChange('actName', e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        {availableActs.map(a => <option key={a.name} value={a.name}>{(a as any).displayName || a.name} ({a.count})</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Regulations / Codes / Orders</label>
+                      <select 
+                        value={filters.legislationName}
+                        onChange={(e) => handleFilterChange('legislationName', e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-300 rounded px-2 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        {availableLegislation.map(l => <option key={l.name} value={l.name}>{(l as any).displayName || l.name} ({l.count})</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={resetFilters}
+                  className="w-full px-3 py-2 text-xs font-bold text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+
+              {/* Sections display */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <h3 className="font-bold text-gray-700 text-sm sticky top-0 bg-white py-2">Sections and Paragraphs</h3>
+                <LegislationList items={filteredData} searchTerm={filters.searchTerm} onClear={resetFilters} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right column: Visualizations */}
