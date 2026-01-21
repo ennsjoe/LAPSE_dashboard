@@ -6,6 +6,9 @@ import { JURISDICTION_COLORS } from '../constants';
 interface LegislationListProps {
   items: LegislationItem[];
   searchTerm: string;
+  selectedActName: string;
+  selectedLegislationName: string;
+  activeDomain: string;
   onClear?: () => void;
 }
 
@@ -23,7 +26,35 @@ const Highlight: React.FC<{ text: string; term: string }> = ({ text, term }) => 
   );
 };
 
-const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, onClear }) => {
+const KeywordHighlight: React.FC<{ text: string; keywords: string[] }> = ({ text, keywords }) => {
+  if (!keywords || keywords.length === 0 || !text) return <>{text}</>;
+  
+  // Create a regex pattern that matches any of the keywords (case-insensitive, whole word)
+  const pattern = keywords
+    .filter(k => k && k.trim())
+    .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special regex chars
+    .join('|');
+  
+  if (!pattern) return <>{text}</>;
+  
+  const regex = new RegExp(`\\b(${pattern})\\b`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isKeyword = keywords.some(k => 
+          k && part.toLowerCase() === k.toLowerCase()
+        );
+        return isKeyword
+          ? <mark key={i} className="bg-blue-200 text-blue-900 px-0.5 rounded font-semibold">{part}</mark>
+          : <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+};
+
+const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, activeDomain, selectedActName, selectedLegislationName, onClear }) => {
   const [expandedItems, setExpandedItems] = React.useState<Set<number>>(new Set());
 
   const toggleExpanded = (idx: number) => {
@@ -38,12 +69,16 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, on
     });
   };
 
-  // Group items by legislation_name, section, and heading, then aggregate paragraphs
+  // Check if we should highlight keywords (domain is selected and not 'All')
+  const shouldHighlightKeywords = activeDomain && activeDomain !== 'All';
+
+  // Group items by legislation and section, then aggregate paragraphs (headings may vary within a section)
   const groupedItems = React.useMemo(() => {
     const groups = new Map<string, LegislationItem[]>();
     
     items.forEach(item => {
-      const key = `${item.legislation_name}|${item.section}|${item.heading}`;
+      const sectionKey = (item.section && item.section.trim()) || (item.heading && item.heading.trim()) || `para-${item.paragraph_id}`;
+      const key = `${item.legislation_id}|${sectionKey}`;
       if (!groups.has(key)) {
         groups.set(key, []);
       }
@@ -55,18 +90,38 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, on
       // Sort by paragraph_id ascending
       const sortedGroup = [...group].sort((a, b) => a.paragraph_id - b.paragraph_id);
       
+      const headingCandidates = sortedGroup.map(g => g.heading).filter(Boolean).map(h => h.trim());
+      const uniqueHeadings = Array.from(new Set(headingCandidates.filter(Boolean)));
+      const displayHeading = uniqueHeadings.length > 0 ? uniqueHeadings.join(' | ') : (sortedGroup[0].heading || '');
+
       // Use the first item as the base, but aggregate the paragraphs
       const aggregatedItem = {
         ...sortedGroup[0],
+        heading: displayHeading,
         paragraph: sortedGroup
           .map(item => item.paragraph)
           .filter(p => p && p.trim())
-          .join(' ')
+          .join('\n\n'),
+        paragraphBlocks: sortedGroup.map(p => ({
+          heading: p.heading,
+          text: p.paragraph
+        }))
       };
       
       return aggregatedItem;
     });
   }, [items]);
+
+  const allExpanded = groupedItems.length > 0 && expandedItems.size === groupedItems.length;
+  const showHeadingAsTitle = (selectedActName && selectedActName !== 'All') || (selectedLegislationName && selectedLegislationName !== 'All');
+
+  const handleExpandAll = () => {
+    if (allExpanded) {
+      setExpandedItems(new Set());
+    } else {
+      setExpandedItems(new Set(groupedItems.map((_, idx) => idx)));
+    }
+  };
 
   if (groupedItems.length === 0) {
     return (
@@ -89,6 +144,14 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, on
 
   return (
     <div className="space-y-2">
+      <div className="flex justify-end mb-1">
+        <button
+          onClick={handleExpandAll}
+          className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded px-3 py-1 transition-colors"
+        >
+          {allExpanded ? 'Collapse All' : 'Expand All'}
+        </button>
+      </div>
       {groupedItems.map((item, idx) => (
         <div key={idx} className="bg-white rounded border border-gray-200 p-3 hover:shadow-md transition-all" style={{ borderLeftColor: JURISDICTION_COLORS[item.jurisdiction], borderLeftWidth: '3px' }}>
           <div className="flex items-start gap-2 mb-2">
@@ -99,20 +162,67 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, on
               {item.jurisdiction[0]}
             </span>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-bold text-gray-800 truncate">
-                <Highlight text={item.act_name} term={searchTerm} />
-              </div>
-              <div className="text-[11px] text-gray-600 truncate">
-                <Highlight text={item.heading} term={searchTerm} />
-              </div>
+              {showHeadingAsTitle ? (
+                <div className="text-xs font-bold text-gray-800 line-clamp-2">
+                  {shouldHighlightKeywords ? (
+                    <KeywordHighlight 
+                      text={item.heading} 
+                      keywords={(item.mgmt_d_keyword || '').split(';').map(k => k.trim()).filter(k => k.length > 0)}
+                    />
+                  ) : (
+                    <Highlight text={item.heading} term={searchTerm} />
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="text-xs font-bold text-gray-800 truncate">
+                    <Highlight text={item.act_name} term={searchTerm} />
+                  </div>
+                  <div className="text-[11px] text-gray-600 truncate">
+                    {shouldHighlightKeywords ? (
+                      <KeywordHighlight 
+                        text={item.heading} 
+                        keywords={(item.mgmt_d_keyword || '').split(';').map(k => k.trim()).filter(k => k.length > 0)}
+                      />
+                    ) : (
+                      <Highlight text={item.heading} term={searchTerm} />
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-            <span className="text-[9px] font-mono font-bold text-gray-500 flex-shrink-0">§{item.section}</span>
+            <span className="text-[11px] font-mono font-bold text-gray-600 flex-shrink-0">Section {item.section}</span>
           </div>
 
           <div className="mb-2">
-            <p className={`text-[11px] text-gray-600 leading-tight ${!expandedItems.has(idx) ? 'line-clamp-2' : ''}`}>
-              <Highlight text={item.paragraph || "Text summary unavailable"} term={searchTerm} />
-            </p>
+            <div className={`space-y-2 ${!expandedItems.has(idx) ? 'line-clamp-2' : ''}`}>
+              {(() => {
+                const seenHeadings = new Set<string>();
+                return ((item as any).paragraphBlocks || [{ heading: item.heading, text: item.paragraph }]).map((block: any, blockIdx: number) => {
+                  const headingTextRaw = block.heading || '';
+                  const headingText = headingTextRaw.trim();
+                  const paraText = block.text || "Text summary unavailable";
+                  const headingKey = headingText.toLowerCase();
+                  const showHeading = headingText && !seenHeadings.has(headingKey);
+                  if (showHeading) seenHeadings.add(headingKey);
+                  return (
+                    <div key={blockIdx} className="whitespace-pre-line text-[11px] text-gray-600 leading-tight">
+                      {showHeading && (
+                        <div className="text-[10px] font-semibold text-gray-700 mb-0.5">{headingText}</div>
+                      )}
+                      {shouldHighlightKeywords ? (
+                        <KeywordHighlight 
+                          text={paraText} 
+                          keywords={(item.mgmt_d_keyword || '').split(';').map(k => k.trim()).filter(k => k.length > 0)}
+                        />
+                      ) : (
+                        <Highlight text={paraText} term={searchTerm} />
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
             {item.paragraph && item.paragraph.length > 150 && (
               <button
                 onClick={() => toggleExpanded(idx)}

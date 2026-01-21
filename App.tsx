@@ -84,23 +84,48 @@ const App: React.FC = () => {
   }, []);
 
   const filteredData = useMemo(() => {
-    const term = filters.searchTerm.toLowerCase();
-    
-    return data.filter(item => {
+    const term = filters.searchTerm.toLowerCase().trim();
+    const selectedDomain = filters.managementDomain;
+
+    // First pass: apply strict filters (jurisdiction, act/reg, type constraint). Do not filter out by management domain yet.
+    const base = data.filter(item => {
       const jMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
-      const dMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
       const aMatch = filters.actName === 'All' || item.act_name === filters.actName;
       const lMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
-      
       // When an Act is selected but no specific regulation, only show the Act itself (not regulations)
-      const typeMatch = filters.actName !== 'All' && filters.legislationName === 'All' 
+      const typeMatch = filters.actName !== 'All' && filters.legislationName === 'All'
         ? item.legislation_type === 'Act'
         : true;
-      
-      const sMatch = !term || 
-        `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase().includes(term);
-      return jMatch && dMatch && aMatch && lMatch && typeMatch && sMatch;
+      return jMatch && aMatch && lMatch && typeMatch;
     });
+
+    // Group by legislation + section key
+    const groups = new Map<string, LegislationItem[]>();
+    base.forEach(item => {
+      const sectionKey = (item.section && item.section.trim()) || (item.heading && item.heading.trim()) || `para-${item.paragraph_id}`;
+      const key = `${item.legislation_id}|${sectionKey}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    });
+
+    // Decide inclusion per section: require domain match if a domain is selected, require term match if a search term exists
+    const results: LegislationItem[] = [];
+    groups.forEach(group => {
+      const domainRequired = selectedDomain !== 'All';
+      const domainPass = !domainRequired || group.some(g => g.management_domain === selectedDomain);
+
+      const termRequired = !!term;
+      const termPass = !termRequired || group.some(g => {
+        const haystack = `${g.act_name} ${g.legislation_name} ${g.heading} ${g.paragraph}`.toLowerCase();
+        return haystack.includes(term);
+      });
+
+      if (domainPass && termPass) {
+        results.push(...group);
+      }
+    });
+
+    return results;
   }, [filters, data]);
 
   const availableActs = useMemo<FilterOption[]>(() => {
@@ -472,7 +497,14 @@ const App: React.FC = () => {
               {/* Sections display */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 <h3 className="font-bold text-gray-700 text-sm sticky top-0 bg-white py-2">Sections and Paragraphs</h3>
-                <LegislationList items={filteredData} searchTerm={filters.searchTerm} onClear={resetFilters} />
+                <LegislationList 
+                  items={filteredData} 
+                  searchTerm={filters.searchTerm} 
+                  activeDomain={filters.managementDomain} 
+                  selectedActName={filters.actName}
+                  selectedLegislationName={filters.legislationName}
+                  onClear={resetFilters} 
+                />
               </div>
             </>
           )}
