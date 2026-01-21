@@ -25,6 +25,7 @@ const App: React.FC = () => {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showDeployGuide, setShowDeployGuide] = useState(false);
+  const [disclaimerCollapsed, setDisclaimerCollapsed] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
     jurisdiction: 'All',
@@ -78,9 +79,15 @@ const App: React.FC = () => {
       const dMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
       const aMatch = filters.actName === 'All' || item.act_name === filters.actName;
       const lMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
+      
+      // When an Act is selected but no specific regulation, only show the Act itself (not regulations)
+      const typeMatch = filters.actName !== 'All' && filters.legislationName === 'All' 
+        ? item.legislation_type === 'Act'
+        : true;
+      
       const sMatch = !term || 
         `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase().includes(term);
-      return jMatch && dMatch && aMatch && lMatch && sMatch;
+      return jMatch && dMatch && aMatch && lMatch && typeMatch && sMatch;
     });
   }, [filters, data]);
 
@@ -100,7 +107,9 @@ const App: React.FC = () => {
       const domainMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
-      return domainMatch && jurisdictionMatch && actMatch;
+      // Only show regulations and orders, not Acts
+      const isRegulation = item.legislation_type !== 'Act';
+      return domainMatch && jurisdictionMatch && actMatch && isRegulation;
     });
     const counts: Record<string, number> = {};
     context.forEach(d => { if (d.legislation_name) counts[d.legislation_name] = (counts[d.legislation_name] || 0) + 1; });
@@ -249,9 +258,29 @@ const App: React.FC = () => {
         <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
         </svg>
-        <div className="text-xs text-yellow-900 leading-relaxed">
-          <strong className="font-black" style={{ color: '#996666' }}>Disclaimer:</strong> None of the information presented in LAPSE qualifies as legal advice. The authors are aquatic biologists with limited legal training. This tool is intended for research and informational purposes only. Always consult official government sources and qualified legal professionals for authoritative legal interpretation.
-        </div>
+        {!disclaimerCollapsed && (
+          <div className="text-xs text-yellow-900 leading-relaxed flex-1">
+            <strong className="font-black" style={{ color: '#996666' }}>Disclaimer:</strong> None of the information presented in LAPSE qualifies as legal advice. The authors are aquatic biologists with limited legal training. This tool is intended for research and informational purposes only. Always consult official government sources and qualified legal professionals for authoritative legal interpretation.
+          </div>
+        )}
+        {disclaimerCollapsed && (
+          <div className="text-xs text-yellow-900 font-bold flex-1">
+            Disclaimer (click to expand)
+          </div>
+        )}
+        <button
+          onClick={() => setDisclaimerCollapsed(!disclaimerCollapsed)}
+          className="text-yellow-600 hover:text-yellow-800 transition-colors flex-shrink-0"
+          aria-label={disclaimerCollapsed ? "Expand disclaimer" : "Collapse disclaimer"}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {disclaimerCollapsed ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+            )}
+          </svg>
+        </button>
       </div>
       
       {/* Data Provenance Info Bar */}
@@ -379,25 +408,6 @@ const App: React.FC = () => {
             Results & Visualizations
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-gray-600 uppercase">Matches Found</div>
-              <div className="text-2xl font-black text-blue-600">{filteredData.length}</div>
-            </div>
-            <div className="h-px bg-gray-200"></div>
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-gray-600 uppercase">Jurisdiction Breakdown</div>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Federal</span>
-                  <span className="font-bold" style={{ color: '#996666' }}>{filteredData.filter(d => d.jurisdiction === 'Federal').length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Provincial</span>
-                  <span className="font-bold" style={{ color: '#668899' }}>{filteredData.filter(d => d.jurisdiction === 'Provincial').length}</span>
-                </div>
-              </div>
-            </div>
-            <div className="h-px bg-gray-200"></div>
             <button 
               onClick={handleExport}
               disabled={filteredData.length === 0}

@@ -30,7 +30,10 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
     const counts: Record<string, number> = {};
     data.forEach(item => {
       const label = item.iucn_threat || "Unspecified";
-      counts[label] = (counts[label] || 0) + 1;
+      // Skip Unspecified values
+      if (label !== "Unspecified") {
+        counts[label] = (counts[label] || 0) + 1;
+      }
     });
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
