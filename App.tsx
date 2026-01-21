@@ -591,14 +591,16 @@ const App: React.FC = () => {
 
       {/* Main content: 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left column: Domain sidebar */}
-        <Sidebar 
-          activeDomain={filters.managementDomain} 
-          onDomainSelect={(d) => handleFilterChange('managementDomain', d)}
-          searchTerm={localSearchTerm}
-          onSearchChange={setLocalSearchTerm}
-          availableDomains={availableDomains}
-        />
+        {/* Left column: Domain sidebar - hidden on md and below, visible on lg+ */}
+        <div className="hidden lg:block">
+          <Sidebar 
+            activeDomain={filters.managementDomain} 
+            onDomainSelect={(d) => handleFilterChange('managementDomain', d)}
+            searchTerm={localSearchTerm}
+            onSearchChange={setLocalSearchTerm}
+            availableDomains={availableDomains}
+          />
+        </div>
 
         {/* Center column: Filters and legislation */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-gray-200">
@@ -646,6 +648,23 @@ const App: React.FC = () => {
             <>
               {/* Filters section */}
               <div className="border-b border-gray-200 bg-white p-4 space-y-4 flex-shrink-0">
+                {/* Management Domain selector - visible only on smaller screens when sidebar is hidden */}
+                <div className="lg:hidden space-y-2">
+                  <label className="block text-sm font-bold text-gray-700">Management Domain</label>
+                  <select
+                    value={filters.managementDomain}
+                    onChange={(e) => handleFilterChange('managementDomain', e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="All">All Domains</option>
+                    {availableDomains.map(domain => (
+                      <option key={domain.name} value={domain.name}>
+                        {domain.name} ({domain.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
                 <div className="space-y-2">
                   <label className="block text-sm font-bold text-gray-700">Filter by Jurisdiction</label>
                   <div className="flex gap-1">
@@ -732,8 +751,8 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Right column: Visualizations */}
-        <div className="w-80 flex flex-col bg-white overflow-hidden border-l border-gray-200">
+        {/* Right column: Visualizations - responsive width */}
+        <div className="w-full md:w-72 lg:w-80 flex flex-col bg-white overflow-hidden border-l border-gray-200">
           <div className="border-b border-gray-200 px-4 py-3 font-bold text-gray-700 text-sm">
             Results & Visualizations
           </div>

@@ -16,7 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
     ? availableDomains.map(d => d.name) 
     : MANAGEMENT_DOMAINS;
   return (
-    <aside className="w-56 border-r border-gray-200 flex-shrink-0 flex flex-col shadow-sm text-white" style={{ backgroundColor: '#2C3E50' }}>
+    <aside className="w-48 lg:w-56 border-r border-gray-200 flex-shrink-0 flex flex-col shadow-sm text-white" style={{ backgroundColor: '#2C3E50' }}>
       {/* Search section */}
       <div className="px-3 py-3 border-b border-gray-200">
         <label className="block text-[10px] font-bold text-white uppercase tracking-widest mb-2">Search Keywords</label>
