@@ -92,9 +92,12 @@ const App: React.FC = () => {
       const jMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       const aMatch = filters.actName === 'All' || item.act_name === filters.actName;
       const lMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
-      // When an Act is selected but no specific regulation, only show the Act itself (not regulations)
-      const typeMatch = filters.actName !== 'All' && filters.legislationName === 'All'
-        ? item.legislation_type === 'Act'
+      // When a specific regulation/code/order is selected, only show that regulation
+      // When no regulation is selected, only show the Act itself (not regulations)
+      const typeMatch = filters.legislationName !== 'All'
+        ? true // Show the selected regulation as-is
+        : filters.actName !== 'All'
+        ? item.legislation_type === 'Act' // Show only Acts when no regulation selected
         : true;
       return jMatch && aMatch && lMatch && typeMatch;
     });
@@ -102,25 +105,28 @@ const App: React.FC = () => {
     // Group by legislation + section key
     const groups = new Map<string, LegislationItem[]>();
     base.forEach(item => {
-      const sectionKey = (item.section && item.section.trim()) || (item.heading && item.heading.trim()) || `para-${item.paragraph_id}`;
+      const sectionKey = item.section && item.section.trim() ? item.section.trim() : `para-${item.paragraph_id}`;
       const key = `${item.legislation_id}|${sectionKey}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(item);
     });
 
-    // Decide inclusion per section: require domain match if a domain is selected, require term match if a search term exists
+    // Decide inclusion per section: if ANY item in a section matches filters, include ALL items in that section
     const results: LegislationItem[] = [];
     groups.forEach(group => {
       const domainRequired = selectedDomain !== 'All';
-      const domainPass = !domainRequired || group.some(g => g.management_domain === selectedDomain);
-
       const termRequired = !!term;
-      const termPass = !termRequired || group.some(g => {
-        const haystack = `${g.act_name} ${g.legislation_name} ${g.heading} ${g.paragraph}`.toLowerCase();
-        return haystack.includes(term);
+
+      // Check if ANY item in the group matches the filters
+      const hasMatchingItem = group.some(item => {
+        const domainMatch = !domainRequired || item.management_domain === selectedDomain;
+        const haystack = `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase();
+        const termMatch = !termRequired || haystack.includes(term);
+        return domainMatch && termMatch;
       });
 
-      if (domainPass && termPass) {
+      // If any item matches, include ALL items from this section
+      if (hasMatchingItem) {
         results.push(...group);
       }
     });
@@ -134,12 +140,17 @@ const App: React.FC = () => {
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       return domainMatch && jurisdictionMatch;
     });
-    const uniqueActs = Array.from(new Set(context.map(d => d.act_name).filter(Boolean)));
+    // Count items per act
+    const actCounts = new Map<string, number>();
+    context.forEach(item => {
+      if (item.act_name) {
+        actCounts.set(item.act_name, (actCounts.get(item.act_name) || 0) + 1);
+      }
+    });
+    const uniqueActs = Array.from(actCounts.keys()).sort((a, b) => a.localeCompare(b));
     const result = [
       { name: 'All', count: uniqueActs.length },
-      ...uniqueActs
-        .map(name => ({ name, count: 1 }))
-        .sort((a, b) => a.name.localeCompare(b.name))
+      ...uniqueActs.map(name => ({ name, count: actCounts.get(name) || 0 }))
     ];
     return result.map(item => item.name === 'All' ? { name: 'All', displayName: 'None Selected', count: item.count } : { ...item, displayName: item.name });
   }, [data, filters.jurisdiction, filters.managementDomain]);
@@ -154,15 +165,34 @@ const App: React.FC = () => {
       const isRegulation = type !== 'act' && (type.includes('regulation') || type.includes('code') || type.includes('order') || type.length > 0);
       return domainMatch && jurisdictionMatch && actMatch && isRegulation;
     });
-    const uniqueRegs = Array.from(new Set(context.map(d => d.legislation_name).filter(Boolean)));
+    // Count items per legislation/regulation
+    const regCounts = new Map<string, number>();
+    context.forEach(item => {
+      if (item.legislation_name) {
+        regCounts.set(item.legislation_name, (regCounts.get(item.legislation_name) || 0) + 1);
+      }
+    });
+    const uniqueRegs = Array.from(regCounts.keys()).sort((a, b) => a.localeCompare(b));
     const result = [
       { name: 'All', count: uniqueRegs.length },
-      ...uniqueRegs
-        .map(name => ({ name, count: 1 }))
-        .sort((a, b) => a.name.localeCompare(b.name))
+      ...uniqueRegs.map(name => ({ name, count: regCounts.get(name) || 0 }))
     ];
     return result.map(item => item.name === 'All' ? { name: 'All', displayName: 'None Selected', count: item.count } : { ...item, displayName: item.name });
   }, [data, filters.jurisdiction, filters.actName, filters.managementDomain]);
+
+  const selectedLegislationUrl = useMemo(() => {
+    // Get the URL of the currently selected legislation/act
+    if (filters.legislationName !== 'All') {
+      // Specific regulation/code/order is selected
+      const item = data.find(d => d.legislation_name === filters.legislationName);
+      return item?.url;
+    } else if (filters.actName !== 'All') {
+      // Act is selected but no specific regulation
+      const item = data.find(d => d.act_name === filters.actName);
+      return item?.url;
+    }
+    return undefined;
+  }, [data, filters.actName, filters.legislationName]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({
@@ -407,6 +437,19 @@ const App: React.FC = () => {
                   <span className="text-gray-800">{filters.legislationName === 'All' ? 'None Selected' : filters.legislationName}</span>
                 </div>
               )}
+              {selectedLegislationUrl && (
+                <a
+                  href={selectedLegislationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded transition-colors inline-flex items-center gap-1"
+                >
+                  View Full Legislation
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              )}
               <button
                 onClick={() => setLegislationCollapsed(!legislationCollapsed)}
                 className="text-xs font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-2"
@@ -495,8 +538,10 @@ const App: React.FC = () => {
               </div>
 
               {/* Sections display */}
+              <div className="border-b border-gray-200 px-4 py-3 font-bold text-gray-700 text-sm bg-white">
+                Sections and Paragraphs
+              </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <h3 className="font-bold text-gray-700 text-sm sticky top-0 bg-white py-2">Sections and Paragraphs</h3>
                 <LegislationList 
                   items={filteredData} 
                   searchTerm={filters.searchTerm} 
@@ -525,7 +570,7 @@ const App: React.FC = () => {
               Download XLSX
             </button>
             <div className="h-px bg-gray-200"></div>
-            <Visualizations data={filteredData} />
+            <Visualizations data={filteredData} selectedDomain={filters.managementDomain} />
           </div>
         </div>
       </div>

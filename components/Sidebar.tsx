@@ -45,21 +45,23 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
 
         <div className="border-t border-gray-200 my-2"></div>
 
-        {MANAGEMENT_DOMAINS.map((domain) => (
-          <button
-            key={domain}
-            onClick={() => onDomainSelect(domain)}
-            className={`w-full text-left px-3 py-2.5 rounded text-sm transition-all ${
-              activeDomain === domain
-                ? 'text-white font-semibold shadow-sm'
-                : 'text-white hover:bg-white/10 font-normal'
-            }`}
-            style={activeDomain === domain ? { backgroundColor: '#2C3E50' } : {}}
-            title={domain}
-          >
-            {domain}
-          </button>
-        ))}
+        {MANAGEMENT_DOMAINS
+          .filter(domain => activeDomain === 'All' || activeDomain === domain)
+          .map((domain) => (
+            <button
+              key={domain}
+              onClick={() => onDomainSelect(domain)}
+              className={`w-full text-left px-3 py-2.5 rounded text-sm transition-all ${
+                activeDomain === domain
+                  ? 'text-white font-semibold shadow-sm'
+                  : 'text-white hover:bg-white/10 font-normal'
+              }`}
+              style={activeDomain === domain ? { backgroundColor: '#2C3E50' } : {}}
+              title={domain}
+            >
+              {domain}
+            </button>
+          ))}
       </nav>
     </aside>
   );

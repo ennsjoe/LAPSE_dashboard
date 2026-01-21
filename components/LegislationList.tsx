@@ -72,12 +72,30 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
   // Check if we should highlight keywords (domain is selected and not 'All')
   const shouldHighlightKeywords = activeDomain && activeDomain !== 'All';
 
+  // Helper function to parse section number for sorting
+  const parseSectionForSort = (section: string): { isNumeric: boolean; value: number | string } => {
+    if (!section) return { isNumeric: false, value: '' };
+    
+    const trimmed = section.trim();
+    // Check if it's purely numeric (including decimals like "5.1", "10.2.3")
+    const numericMatch = trimmed.match(/^(\d+(?:\.\d+)*)$/);
+    
+    if (numericMatch) {
+      // Parse as number for comparison, but keep original for display
+      return { isNumeric: true, value: parseFloat(numericMatch[1]) };
+    }
+    
+    // Not purely numeric (contains letters or other characters)
+    return { isNumeric: false, value: trimmed };
+  };
+
   // Group items by legislation and section, then aggregate paragraphs (headings may vary within a section)
   const groupedItems = React.useMemo(() => {
     const groups = new Map<string, LegislationItem[]>();
     
     items.forEach(item => {
-      const sectionKey = (item.section && item.section.trim()) || (item.heading && item.heading.trim()) || `para-${item.paragraph_id}`;
+      // Group by legislation_id and section only (not by heading, to aggregate all paragraphs in a section)
+      const sectionKey = item.section && item.section.trim() ? item.section.trim() : `para-${item.paragraph_id}`;
       const key = `${item.legislation_id}|${sectionKey}`;
       if (!groups.has(key)) {
         groups.set(key, []);
@@ -86,7 +104,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
     });
     
     // For each group, sort by paragraph_id and aggregate
-    return Array.from(groups.values()).map(group => {
+    const groupedArray = Array.from(groups.values()).map(group => {
       // Sort by paragraph_id ascending
       const sortedGroup = [...group].sort((a, b) => a.paragraph_id - b.paragraph_id);
       
@@ -94,23 +112,89 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
       const uniqueHeadings = Array.from(new Set(headingCandidates.filter(Boolean)));
       const displayHeading = uniqueHeadings.length > 0 ? uniqueHeadings.join(' | ') : (sortedGroup[0].heading || '');
 
-      // Use the first item as the base, but aggregate the paragraphs
+      // Collect all unique management domains, keywords, IUCN threats, and clause types
+      const allDomains = Array.from(new Set(
+        sortedGroup.flatMap(p => (p.management_domain || '').split(/[;,]/).map(d => d.trim()).filter(d => d.length > 0))
+      ));
+      const allKeywords = Array.from(new Set(
+        sortedGroup.flatMap(p => (p.mgmt_d_keyword || '').split(';').map(k => k.trim()).filter(k => k.length > 0))
+      ));
+      const allIucnThreats = Array.from(new Set(
+        sortedGroup.flatMap(p => (p.iucn_threat || '').split(/[;,]/).map(t => t.trim()).filter(t => t.length > 0))
+      ));
+      const allClauseTypes = Array.from(new Set(
+        sortedGroup.flatMap(p => (p.clause_type || '').split(/[;,]/).map(c => c.trim()).filter(c => c.length > 0))
+      ));
+
+      // Use the first item as the base, but aggregate the paragraphs and metadata
       const aggregatedItem = {
         ...sortedGroup[0],
         heading: displayHeading,
+        management_domain: allDomains.join(';'),
+        mgmt_d_keyword: allKeywords.join('; '),
+        iucn_threat: allIucnThreats.join(';'),
+        clause_type: allClauseTypes.join(';'),
         paragraph: sortedGroup
           .map(item => item.paragraph)
           .filter(p => p && p.trim())
           .join('\n\n'),
         paragraphBlocks: sortedGroup.map(p => ({
           heading: p.heading,
-          text: p.paragraph
+          text: p.paragraph,
+          mgmt_d_keyword: p.mgmt_d_keyword,
+          management_domain: p.management_domain
         }))
       };
       
       return aggregatedItem;
     });
-  }, [items]);
+    
+    // If a domain is selected but no act/regulation, sort by legislation keyword match count
+    const isDomainOnlySelected = activeDomain !== 'All' && selectedActName === 'All' && selectedLegislationName === 'All';
+    if (isDomainOnlySelected) {
+      // Group by legislation and count keyword matches
+      const legislationGroups = new Map<number, { items: typeof groupedArray, count: number }>();
+      groupedArray.forEach(item => {
+        if (!legislationGroups.has(item.legislation_id)) {
+          legislationGroups.set(item.legislation_id, { items: [], count: 0 });
+        }
+        const group = legislationGroups.get(item.legislation_id)!;
+        group.items.push(item);
+        // Count non-empty management domain keywords for this item
+        const keywordCount = (item.mgmt_d_keyword || '')
+          .split(';')
+          .map(k => k.trim())
+          .filter(k => k.length > 0).length;
+        group.count += keywordCount;
+      });
+
+      // Sort legislations by keyword count descending, then flatten
+      const sortedLegislations = Array.from(legislationGroups.entries())
+        .sort((a, b) => b[1].count - a[1].count);
+      
+      return sortedLegislations.flatMap(([_, group]) => group.items);
+    }
+    
+    // Sort the grouped items by section number (numeric sections treated as numbers, ascending)
+    groupedArray.sort((a, b) => {
+      const aParsed = parseSectionForSort(a.section);
+      const bParsed = parseSectionForSort(b.section);
+      
+      // Both numeric: compare as numbers
+      if (aParsed.isNumeric && bParsed.isNumeric) {
+        return (aParsed.value as number) - (bParsed.value as number);
+      }
+      
+      // One numeric, one not: numeric comes first
+      if (aParsed.isNumeric) return -1;
+      if (bParsed.isNumeric) return 1;
+      
+      // Both non-numeric: compare as strings
+      return String(aParsed.value).localeCompare(String(bParsed.value));
+    });
+    
+    return groupedArray;
+  }, [items, activeDomain, selectedActName, selectedLegislationName]);
 
   const allExpanded = groupedItems.length > 0 && expandedItems.size === groupedItems.length;
   const showHeadingAsTitle = (selectedActName && selectedActName !== 'All') || (selectedLegislationName && selectedLegislationName !== 'All');
@@ -122,6 +206,19 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
       setExpandedItems(new Set(groupedItems.map((_, idx) => idx)));
     }
   };
+
+  // Check if no domain and no act/regulation are selected
+  const noFiltersSelected = activeDomain === 'All' && selectedActName === 'All' && selectedLegislationName === 'All';
+
+  if (noFiltersSelected) {
+    return (
+      <div className="py-16 text-center bg-gray-300 rounded border border-gray-400">
+        <svg className="w-12 h-12 mx-auto text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <p className="text-gray-700 font-bold text-sm mb-2">Select a Starting Point</p>
+        <p className="text-gray-600 text-xs">Choose a Management Domain or an Act to view sections and paragraphs.</p>
+      </div>
+    );
+  }
 
   if (groupedItems.length === 0) {
     return (
@@ -197,23 +294,27 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
           <div className="mb-2">
             <div className={`space-y-2 ${!expandedItems.has(idx) ? 'line-clamp-2' : ''}`}>
               {(() => {
-                const seenHeadings = new Set<string>();
-                return ((item as any).paragraphBlocks || [{ heading: item.heading, text: item.paragraph }]).map((block: any, blockIdx: number) => {
+                let lastHeading = '';
+                return ((item as any).paragraphBlocks || [{ heading: item.heading, text: item.paragraph, mgmt_d_keyword: item.mgmt_d_keyword, management_domain: item.management_domain }]).map((block: any, blockIdx: number) => {
                   const headingTextRaw = block.heading || '';
                   const headingText = headingTextRaw.trim();
                   const paraText = block.text || "Text summary unavailable";
-                  const headingKey = headingText.toLowerCase();
-                  const showHeading = headingText && !seenHeadings.has(headingKey);
-                  if (showHeading) seenHeadings.add(headingKey);
+                  // Only highlight keywords if this paragraph's domain matches the selected domain
+                  const blockDomain = block.management_domain || '';
+                  const domainMatch = activeDomain === 'All' || blockDomain === activeDomain;
+                  const blockKeywords = domainMatch ? (block.mgmt_d_keyword || '').split(';').map((k: string) => k.trim()).filter((k: string) => k.length > 0) : [];
+                  // Show heading if it's different from the last one
+                  const showHeading = headingText && headingText !== lastHeading;
+                  if (headingText) lastHeading = headingText;
                   return (
                     <div key={blockIdx} className="whitespace-pre-line text-[11px] text-gray-600 leading-tight">
                       {showHeading && (
-                        <div className="text-[10px] font-semibold text-gray-700 mb-0.5">{headingText}</div>
+                        <div className="text-[10px] font-semibold text-gray-700 mb-0.5 mt-1">{headingText}</div>
                       )}
-                      {shouldHighlightKeywords ? (
+                      {shouldHighlightKeywords && blockKeywords.length > 0 ? (
                         <KeywordHighlight 
                           text={paraText} 
-                          keywords={(item.mgmt_d_keyword || '').split(';').map(k => k.trim()).filter(k => k.length > 0)}
+                          keywords={blockKeywords}
                         />
                       ) : (
                         <Highlight text={paraText} term={searchTerm} />
@@ -248,15 +349,15 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
           </div>
 
           <div className="flex flex-wrap gap-1 text-[9px]">
-            {item.management_domain && (
-              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100">{item.management_domain}</span>
-            )}
-            {item.iucn_threat && (
-              <span className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded border border-green-100">{item.iucn_threat}</span>
-            )}
-            {item.clause_type && (
-              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded border border-gray-200">{item.clause_type}</span>
-            )}
+            {item.management_domain && item.management_domain.split(/[;,]/).filter((s: string) => s.trim()).map((domain: string, i: number) => (
+              <span key={`domain-${i}`} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100">{domain.trim()}</span>
+            ))}
+            {item.iucn_threat && item.iucn_threat.split(/[;,]/).filter((s: string) => s.trim()).map((threat: string, i: number) => (
+              <span key={`threat-${i}`} className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded border border-green-100">{threat.trim()}</span>
+            ))}
+            {item.clause_type && item.clause_type.split(/[;,]/).filter((s: string) => s.trim()).map((type: string, i: number) => (
+              <span key={`type-${i}`} className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded border border-gray-200">{type.trim()}</span>
+            ))}
           </div>
         </div>
       ))}
