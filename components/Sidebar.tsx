@@ -7,9 +7,14 @@ interface SidebarProps {
   onDomainSelect: (domain: string) => void;
   searchTerm: string;
   onSearchChange: (value: string) => void;
+  availableDomains?: Array<{ name: string; count: number }>;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchTerm, onSearchChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchTerm, onSearchChange, availableDomains }) => {
+  // Use availableDomains if provided, otherwise fall back to MANAGEMENT_DOMAINS
+  const domainsToDisplay = availableDomains && availableDomains.length > 0 
+    ? availableDomains.map(d => d.name) 
+    : MANAGEMENT_DOMAINS;
   return (
     <aside className="w-56 border-r border-gray-200 flex-shrink-0 flex flex-col shadow-sm text-white" style={{ backgroundColor: '#2C3E50' }}>
       {/* Search section */}
@@ -45,9 +50,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
 
         <div className="border-t border-gray-200 my-2"></div>
 
-        {MANAGEMENT_DOMAINS
+        {domainsToDisplay
           .filter(domain => activeDomain === 'All' || activeDomain === domain)
-          .map((domain) => (
+          .map((domain) => {
+            const domainInfo = availableDomains?.find(d => d.name === domain);
+            const count = domainInfo?.count || 0;
+            return (
             <button
               key={domain}
               onClick={() => onDomainSelect(domain)}
@@ -59,9 +67,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
               style={activeDomain === domain ? { backgroundColor: '#2C3E50' } : {}}
               title={domain}
             >
-              {domain}
+              <span>{domain}</span>
+              {count > 0 && <span className="text-xs text-gray-300 ml-2">[{count}]</span>}
             </button>
-          ))}
+            );
+          })}
       </nav>
     </aside>
   );

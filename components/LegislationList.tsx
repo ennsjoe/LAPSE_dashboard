@@ -154,6 +154,9 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
       const allClauseTypes = Array.from(new Set(
         sortedGroup.flatMap(p => (p.clause_type || '').split(';').map(c => c.trim()).filter(c => c.length > 0))
       ));
+      const allDiscretionTypes = Array.from(new Set(
+        sortedGroup.flatMap(p => (p.discretion_type || '').split(';').map(d => d.trim()).filter(d => d.length > 0))
+      ));
 
       // Use the first item as the base, but aggregate the paragraphs and metadata
       const aggregatedItem = {
@@ -163,6 +166,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
         mgmt_d_keyword: allKeywords.join('; '),
         iucn_threat: allIucnThreats.join(';'),
         clause_type: allClauseTypes.join(';'),
+        discretion_type: allDiscretionTypes.join(';'),
         paragraph: sortedGroup
           .map(item => item.paragraph)
           .filter(p => p && p.trim())
@@ -280,8 +284,29 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
           {allExpanded ? 'Collapse All' : 'Expand All'}
         </button>
       </div>
-      {groupedItems.map((item, idx) => (
-        <div key={idx} className="bg-white rounded border border-gray-200 p-3 hover:shadow-md transition-all" style={{ borderLeftColor: JURISDICTION_COLORS[item.jurisdiction], borderLeftWidth: '3px' }}>
+      {groupedItems.map((item, idx) => {
+        // Determine discretion indicators
+        const discretionTypes = (item.discretion_type || '').split(';').map(d => d.trim().toLowerCase()).filter(d => d.length > 0);
+        const hasMandatory = discretionTypes.some(d => d === 'mandatory');
+        const hasDiscretionary = discretionTypes.some(d => d === 'discretionary');
+        
+        return (
+        <div key={idx} className="bg-white rounded border border-gray-200 p-3 hover:shadow-md transition-all relative" style={{ borderLeftColor: JURISDICTION_COLORS[item.jurisdiction], borderLeftWidth: '3px' }}>
+          {/* Discretion Stars - positioned in bottom right */}
+          {(hasMandatory || hasDiscretionary) && (
+            <div className="absolute bottom-2 right-2 flex gap-1">
+              {hasMandatory && (
+                <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20" title="Mandatory language">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              )}
+              {hasDiscretionary && (
+                <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20" title="Discretionary language">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              )}
+            </div>
+          )}
           <div className="flex items-start gap-2 mb-2">
             <span 
               className="px-2 py-0.5 rounded text-[8px] font-bold uppercase text-white flex-shrink-0"
@@ -338,7 +363,8 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
                   
                   // Clause type underlining: only underline if this paragraph's clause type matches
                   const blockClauseType = block.clause_type || '';
-                  const clauseMatch = shouldUnderlineClause && blockClauseType === selectedClauseType;
+                  const blockClauseTypes = blockClauseType.split(';').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+                  const clauseMatch = shouldUnderlineClause && blockClauseTypes.some((t: string) => t.toLowerCase() === selectedClauseType.toLowerCase());
                   const clauseKeywords = clauseMatch ? (block.clause_type_keyword || '').split(';').map((k: string) => k.trim()).filter((k: string) => k.length > 0) : [];
                   
                   // Show heading if it's different from the last one
@@ -412,7 +438,8 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
             ))}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

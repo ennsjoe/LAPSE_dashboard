@@ -132,13 +132,25 @@ const App: React.FC = () => {
 
       // Check if ANY item in the group matches the filters
       const hasMatchingItem = group.some(item => {
-        const domainMatch = !domainRequired || item.management_domain === selectedDomain;
+        // Handle semicolon-separated management domains
+        const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
+        const domainMatch = !domainRequired || domainValues.some(d => d.toLowerCase() === selectedDomain.toLowerCase());
         const haystack = `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase();
         const termMatch = !termRequired || haystack.includes(term);
-        const clauseMatch = !clauseRequired || item.clause_type === filters.clauseType;
-        const actionableMatch = !actionableRequired || item.actionable_type === filters.actionableType;
-        const officialMatch = !officialRequired || item.responsible_official === filters.responsibleOfficial;
-        const discretionMatch = !discretionRequired || item.discretion_type === filters.discretionType;
+        
+        // Handle semicolon-separated values in clause filters
+        const clauseValues = (item.clause_type || '').split(';').map(v => v.trim()).filter(Boolean);
+        const clauseMatch = !clauseRequired || clauseValues.some(v => v.toLowerCase() === filters.clauseType.toLowerCase());
+        
+        const actionableValues = (item.actionable_type || '').split(';').map(v => v.trim()).filter(Boolean);
+        const actionableMatch = !actionableRequired || actionableValues.some(v => v.toLowerCase() === filters.actionableType.toLowerCase());
+        
+        const officialValues = (item.responsible_official || '').split(';').map(v => v.trim()).filter(Boolean);
+        const officialMatch = !officialRequired || officialValues.some(v => v.toLowerCase() === filters.responsibleOfficial.toLowerCase());
+        
+        const discretionValues = (item.discretion_type || '').split(';').map(v => v.trim()).filter(Boolean);
+        const discretionMatch = !discretionRequired || discretionValues.some(v => v.toLowerCase() === filters.discretionType.toLowerCase());
+        
         return domainMatch && termMatch && clauseMatch && actionableMatch && officialMatch && discretionMatch;
       });
 
@@ -153,7 +165,8 @@ const App: React.FC = () => {
 
   const availableActs = useMemo<FilterOption[]>(() => {
     const context = data.filter(item => {
-      const domainMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
+      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
+      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       return domainMatch && jurisdictionMatch;
     });
@@ -174,7 +187,8 @@ const App: React.FC = () => {
 
   const availableLegislation = useMemo<FilterOption[]>(() => {
     const context = data.filter(item => {
-      const domainMatch = filters.managementDomain === 'All' || item.management_domain === filters.managementDomain;
+      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
+      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
       // Include regulations, codes, and orders (exclude Acts)
@@ -213,8 +227,16 @@ const App: React.FC = () => {
 
   // Clause filter options
   const availableClauseTypes = useMemo<FilterOption[]>(() => {
+    const context = data.filter(item => {
+      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
+      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
+      const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
+      const legMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
+      return domainMatch && jurisdictionMatch && actMatch && legMatch;
+    });
     const counts = new Map<string, number>();
-    data.forEach(item => {
+    context.forEach(item => {
       const types = (item.clause_type || '').split(';').map(t => t.trim()).filter(Boolean);
       types.forEach(t => counts.set(t, (counts.get(t) || 0) + 1));
     });
@@ -223,49 +245,129 @@ const App: React.FC = () => {
       { name: 'All', count: uniqueTypes.length },
       ...uniqueTypes.map(name => ({ name, count: counts.get(name) || 0 }))
     ];
-  }, [data]);
+  }, [data, filters.managementDomain, filters.jurisdiction, filters.actName, filters.legislationName]);
 
   const availableActionableTypes = useMemo<FilterOption[]>(() => {
+    const context = data.filter(item => {
+      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
+      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
+      const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
+      const legMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
+      return domainMatch && jurisdictionMatch && actMatch && legMatch;
+    });
     const counts = new Map<string, number>();
-    data.forEach(item => {
-      if (item.actionable_type) {
-        counts.set(item.actionable_type, (counts.get(item.actionable_type) || 0) + 1);
-      }
+    const normalized = new Map<string, string>();
+    context.forEach(item => {
+      const types = (item.actionable_type || '').split(';').map(t => t.trim()).filter(Boolean);
+      types.forEach(t => {
+        const lower = t.toLowerCase();
+        const canonical = normalized.get(lower) || t;
+        normalized.set(lower, canonical);
+        counts.set(canonical, (counts.get(canonical) || 0) + 1);
+      });
     });
     const uniqueTypes = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
     return [
       { name: 'All', count: uniqueTypes.length },
       ...uniqueTypes.map(name => ({ name, count: counts.get(name) || 0 }))
     ];
-  }, [data]);
+  }, [data, filters.managementDomain, filters.jurisdiction, filters.actName, filters.legislationName]);
 
   const availableResponsibleOfficials = useMemo<FilterOption[]>(() => {
+    const context = data.filter(item => {
+      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
+      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
+      const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
+      const legMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
+      return domainMatch && jurisdictionMatch && actMatch && legMatch;
+    });
     const counts = new Map<string, number>();
-    data.forEach(item => {
-      if (item.responsible_official) {
-        counts.set(item.responsible_official, (counts.get(item.responsible_official) || 0) + 1);
-      }
+    const normalized = new Map<string, string>();
+    context.forEach(item => {
+      const officials = (item.responsible_official || '').split(';').map(o => o.trim()).filter(Boolean);
+      officials.forEach(o => {
+        const lower = o.toLowerCase();
+        const canonical = normalized.get(lower) || o;
+        normalized.set(lower, canonical);
+        counts.set(canonical, (counts.get(canonical) || 0) + 1);
+      });
     });
     const uniqueOfficials = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
     return [
       { name: 'All', count: uniqueOfficials.length },
       ...uniqueOfficials.map(name => ({ name, count: counts.get(name) || 0 }))
     ];
-  }, [data]);
+  }, [data, filters.managementDomain, filters.jurisdiction, filters.actName, filters.legislationName]);
 
   const availableDiscretionTypes = useMemo<FilterOption[]>(() => {
+    const context = data.filter(item => {
+      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
+      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
+      const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
+      const legMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
+      return domainMatch && jurisdictionMatch && actMatch && legMatch;
+    });
     const counts = new Map<string, number>();
-    data.forEach(item => {
-      if (item.discretion_type) {
-        counts.set(item.discretion_type, (counts.get(item.discretion_type) || 0) + 1);
-      }
+    const normalized = new Map<string, string>();
+    context.forEach(item => {
+      const types = (item.discretion_type || '').split(';').map(t => t.trim()).filter(Boolean);
+      types.forEach(t => {
+        const lower = t.toLowerCase();
+        const canonical = normalized.get(lower) || t;
+        normalized.set(lower, canonical);
+        counts.set(canonical, (counts.get(canonical) || 0) + 1);
+      });
     });
     const uniqueTypes = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
     return [
       { name: 'All', count: uniqueTypes.length },
       ...uniqueTypes.map(name => ({ name, count: counts.get(name) || 0 }))
     ];
-  }, [data]);
+  }, [data, filters.managementDomain, filters.jurisdiction, filters.actName, filters.legislationName]);
+
+  const availableDomains = useMemo<Array<{ name: string; count: number }>>(() => {
+    // Filter data by jurisdiction, act, and legislation if selected
+    const context = data.filter(item => {
+      const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
+      const legMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
+      return jurisdictionMatch && actMatch && legMatch;
+    });
+    
+    // Count keyword matches per domain
+    const domainCounts = new Map<string, number>();
+    const normalized = new Map<string, string>();
+    
+    context.forEach(item => {
+      // Split management domains by semicolon
+      const domains = (item.management_domain || '').split(';').map(d => d.trim()).filter(d => d.length > 0);
+      domains.forEach(domain => {
+        // Normalize by capitalization
+        const lower = domain.toLowerCase();
+        const canonical = normalized.get(lower) || domain;
+        normalized.set(lower, canonical);
+        
+        // Count keywords for this domain
+        const keywords = (item.mgmt_d_keyword || '').split(';').filter(k => k.trim().length > 0);
+        domainCounts.set(canonical, (domainCounts.get(canonical) || 0) + keywords.length);
+      });
+    });
+    
+    // Sort by count (descending), then by name (ascending)
+    const sorted = Array.from(domainCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count; // Descending by count
+        }
+        return a.name.localeCompare(b.name); // Ascending by name
+      });
+    
+    return sorted;
+  }, [data, filters.jurisdiction, filters.actName, filters.legislationName]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({
@@ -495,6 +597,7 @@ const App: React.FC = () => {
           onDomainSelect={(d) => handleFilterChange('managementDomain', d)}
           searchTerm={localSearchTerm}
           onSearchChange={setLocalSearchTerm}
+          availableDomains={availableDomains}
         />
 
         {/* Center column: Filters and legislation */}
