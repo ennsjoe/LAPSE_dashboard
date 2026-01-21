@@ -65,6 +65,10 @@ export interface FilterState {
   searchTerm: string;
   actName: string;
   legislationName: string;
+  clauseType: string;
+  actionableType: string;
+  responsibleOfficial: string;
+  discretionType: string;
 }
 
 export interface FilterOption {

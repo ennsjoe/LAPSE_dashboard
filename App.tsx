@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Filters from './components/Filters';
 import Visualizations from './components/Visualizations';
 import LegislationList from './components/LegislationList';
+import ClauseFilters from './components/ClauseFilters';
 import * as dataService from './services/dataService';
 
 const StatCard: React.FC<{ label: string; value: string | number; color: string; isText?: boolean }> = ({ label, value, color, isText }) => (
@@ -35,7 +36,11 @@ const App: React.FC = () => {
     managementDomain: 'All',
     searchTerm: '',
     actName: 'All',
-    legislationName: 'All'
+    legislationName: 'All',
+    clauseType: 'All',
+    actionableType: 'All',
+    responsibleOfficial: 'All',
+    discretionType: 'All'
   });
 
   // Debounce search term updates
@@ -52,7 +57,11 @@ const App: React.FC = () => {
       managementDomain: 'All',
       searchTerm: '',
       actName: 'All',
-      legislationName: 'All'
+      legislationName: 'All',
+      clauseType: 'All',
+      actionableType: 'All',
+      responsibleOfficial: 'All',
+      discretionType: 'All'
     });
     setLocalSearchTerm('');
   }, []);
@@ -116,13 +125,21 @@ const App: React.FC = () => {
     groups.forEach(group => {
       const domainRequired = selectedDomain !== 'All';
       const termRequired = !!term;
+      const clauseRequired = filters.clauseType !== 'All';
+      const actionableRequired = filters.actionableType !== 'All';
+      const officialRequired = filters.responsibleOfficial !== 'All';
+      const discretionRequired = filters.discretionType !== 'All';
 
       // Check if ANY item in the group matches the filters
       const hasMatchingItem = group.some(item => {
         const domainMatch = !domainRequired || item.management_domain === selectedDomain;
         const haystack = `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase();
         const termMatch = !termRequired || haystack.includes(term);
-        return domainMatch && termMatch;
+        const clauseMatch = !clauseRequired || item.clause_type === filters.clauseType;
+        const actionableMatch = !actionableRequired || item.actionable_type === filters.actionableType;
+        const officialMatch = !officialRequired || item.responsible_official === filters.responsibleOfficial;
+        const discretionMatch = !discretionRequired || item.discretion_type === filters.discretionType;
+        return domainMatch && termMatch && clauseMatch && actionableMatch && officialMatch && discretionMatch;
       });
 
       // If any item matches, include ALL items from this section
@@ -193,6 +210,62 @@ const App: React.FC = () => {
     }
     return undefined;
   }, [data, filters.actName, filters.legislationName]);
+
+  // Clause filter options
+  const availableClauseTypes = useMemo<FilterOption[]>(() => {
+    const counts = new Map<string, number>();
+    data.forEach(item => {
+      const types = (item.clause_type || '').split(';').map(t => t.trim()).filter(Boolean);
+      types.forEach(t => counts.set(t, (counts.get(t) || 0) + 1));
+    });
+    const uniqueTypes = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
+    return [
+      { name: 'All', count: uniqueTypes.length },
+      ...uniqueTypes.map(name => ({ name, count: counts.get(name) || 0 }))
+    ];
+  }, [data]);
+
+  const availableActionableTypes = useMemo<FilterOption[]>(() => {
+    const counts = new Map<string, number>();
+    data.forEach(item => {
+      if (item.actionable_type) {
+        counts.set(item.actionable_type, (counts.get(item.actionable_type) || 0) + 1);
+      }
+    });
+    const uniqueTypes = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
+    return [
+      { name: 'All', count: uniqueTypes.length },
+      ...uniqueTypes.map(name => ({ name, count: counts.get(name) || 0 }))
+    ];
+  }, [data]);
+
+  const availableResponsibleOfficials = useMemo<FilterOption[]>(() => {
+    const counts = new Map<string, number>();
+    data.forEach(item => {
+      if (item.responsible_official) {
+        counts.set(item.responsible_official, (counts.get(item.responsible_official) || 0) + 1);
+      }
+    });
+    const uniqueOfficials = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
+    return [
+      { name: 'All', count: uniqueOfficials.length },
+      ...uniqueOfficials.map(name => ({ name, count: counts.get(name) || 0 }))
+    ];
+  }, [data]);
+
+  const availableDiscretionTypes = useMemo<FilterOption[]>(() => {
+    const counts = new Map<string, number>();
+    data.forEach(item => {
+      if (item.discretion_type) {
+        counts.set(item.discretion_type, (counts.get(item.discretion_type) || 0) + 1);
+      }
+    });
+    const uniqueTypes = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b));
+    return [
+      { name: 'All', count: uniqueTypes.length },
+      ...uniqueTypes.map(name => ({ name, count: counts.get(name) || 0 }))
+    ];
+  }, [data]);
 
   const handleFilterChange = useCallback((key: keyof FilterState, value: string) => {
     setFilters(prev => ({
@@ -536,23 +609,24 @@ const App: React.FC = () => {
                   Reset All Filters
                 </button>
               </div>
-
-              {/* Sections display */}
-              <div className="border-b border-gray-200 px-4 py-3 font-bold text-gray-700 text-sm bg-white">
-                Sections and Paragraphs
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <LegislationList 
-                  items={filteredData} 
-                  searchTerm={filters.searchTerm} 
-                  activeDomain={filters.managementDomain} 
-                  selectedActName={filters.actName}
-                  selectedLegislationName={filters.legislationName}
-                  onClear={resetFilters} 
-                />
-              </div>
             </>
           )}
+
+          {/* Sections display - always visible */}
+          <div className="border-b border-gray-200 px-4 py-3 font-bold text-gray-700 text-sm bg-white">
+            Sections and Paragraphs
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <LegislationList 
+              items={filteredData} 
+              searchTerm={filters.searchTerm} 
+              activeDomain={filters.managementDomain} 
+              selectedActName={filters.actName}
+              selectedLegislationName={filters.legislationName}
+              selectedClauseType={filters.clauseType}
+              onClear={resetFilters} 
+            />
+          </div>
         </div>
 
         {/* Right column: Visualizations */}
@@ -571,6 +645,17 @@ const App: React.FC = () => {
             </button>
             <div className="h-px bg-gray-200"></div>
             <Visualizations data={filteredData} selectedDomain={filters.managementDomain} />
+            <ClauseFilters
+              clauseType={filters.clauseType}
+              actionableType={filters.actionableType}
+              responsibleOfficial={filters.responsibleOfficial}
+              discretionType={filters.discretionType}
+              clauseTypeOptions={availableClauseTypes}
+              actionableTypeOptions={availableActionableTypes}
+              responsibleOfficialOptions={availableResponsibleOfficials}
+              discretionTypeOptions={availableDiscretionTypes}
+              onFilterChange={handleFilterChange}
+            />
           </div>
         </div>
       </div>

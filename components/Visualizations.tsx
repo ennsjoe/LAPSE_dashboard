@@ -55,7 +55,8 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data, selectedDomain })
     data.forEach(item => {
       const domainMatch = selectedDomain === 'All' || item.management_domain === selectedDomain;
       if (!domainMatch) return;
-      const types = (item.clause_type || '').split(/[;,]/).map(c => c.trim()).filter(Boolean);
+      // Clause types may contain commas within names, so split only by semicolons
+      const types = (item.clause_type || '').split(';').map(c => c.trim()).filter(Boolean);
       types.forEach(t => counts[t] = (counts[t] || 0) + 1);
     });
 
@@ -96,7 +97,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data, selectedDomain })
         </div>
 
         {activeTab === 'keywords' && (
-          <div style={{ height: '200px' }}>
+          <div style={{ height: '260px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={keywordFreqData} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
@@ -104,7 +105,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data, selectedDomain })
                 <YAxis
                   type="category"
                   dataKey="name"
-                  width={100}
+                  width={120}
                   tick={{ fontSize: 9, fontWeight: 600, fill: '#64748b' }}
                   axisLine={false}
                   tickLine={false}
@@ -120,34 +121,31 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data, selectedDomain })
         )}
 
         {activeTab === 'iucn' && (
-          <div style={{ height: '220px' }}>
+          <div style={{ height: '260px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={threatData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={2}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {threatData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
+              <BarChart data={threatData} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" hide />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={140}
+                  tick={{ fontSize: 9, fontWeight: 600, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
                 />
-                <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: '10px' }} />
-              </PieChart>
+                <Bar dataKey="value" fill="#2C3E50" radius={[0, 4, 4, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         )}
 
         {activeTab === 'clause' && (
-          <div style={{ height: '200px' }}>
+          <div style={{ height: '260px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={clauseTypeData} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
@@ -164,7 +162,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data, selectedDomain })
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
                 />
-                <Bar dataKey="value" fill="#6FA577" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="value" fill="#2C3E50" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

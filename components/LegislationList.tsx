@@ -9,6 +9,7 @@ interface LegislationListProps {
   selectedActName: string;
   selectedLegislationName: string;
   activeDomain: string;
+  selectedClauseType?: string;
   onClear?: () => void;
 }
 
@@ -54,7 +55,35 @@ const KeywordHighlight: React.FC<{ text: string; keywords: string[] }> = ({ text
   );
 };
 
-const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, activeDomain, selectedActName, selectedLegislationName, onClear }) => {
+const ClauseKeywordUnderline: React.FC<{ text: string; keywords: string[] }> = ({ text, keywords }) => {
+  if (!keywords || keywords.length === 0 || !text) return <>{text}</>;
+  
+  // Create a regex pattern that matches any of the keywords (case-insensitive, whole word)
+  const pattern = keywords
+    .filter(k => k && k.trim())
+    .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special regex chars
+    .join('|');
+  
+  if (!pattern) return <>{text}</>;
+  
+  const regex = new RegExp(`\\b(${pattern})\\b`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isKeyword = keywords.some(k => 
+          k && part.toLowerCase() === k.toLowerCase()
+        );
+        return isKeyword
+          ? <span key={i} className="underline decoration-2 decoration-orange-500">{part}</span>
+          : <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+};
+
+const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, activeDomain, selectedActName, selectedLegislationName, selectedClauseType, onClear }) => {
   const [expandedItems, setExpandedItems] = React.useState<Set<number>>(new Set());
 
   const toggleExpanded = (idx: number) => {
@@ -123,7 +152,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
         sortedGroup.flatMap(p => (p.iucn_threat || '').split(/[;,]/).map(t => t.trim()).filter(t => t.length > 0))
       ));
       const allClauseTypes = Array.from(new Set(
-        sortedGroup.flatMap(p => (p.clause_type || '').split(/[;,]/).map(c => c.trim()).filter(c => c.length > 0))
+        sortedGroup.flatMap(p => (p.clause_type || '').split(';').map(c => c.trim()).filter(c => c.length > 0))
       ));
 
       // Use the first item as the base, but aggregate the paragraphs and metadata
@@ -142,7 +171,9 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
           heading: p.heading,
           text: p.paragraph,
           mgmt_d_keyword: p.mgmt_d_keyword,
-          management_domain: p.management_domain
+          management_domain: p.management_domain,
+          clause_type: p.clause_type,
+          clause_type_keyword: p.clause_type_keyword
         }))
       };
       
@@ -295,26 +326,47 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
             <div className={`space-y-2 ${!expandedItems.has(idx) ? 'line-clamp-2' : ''}`}>
               {(() => {
                 let lastHeading = '';
-                return ((item as any).paragraphBlocks || [{ heading: item.heading, text: item.paragraph, mgmt_d_keyword: item.mgmt_d_keyword, management_domain: item.management_domain }]).map((block: any, blockIdx: number) => {
+                const shouldUnderlineClause = selectedClauseType && selectedClauseType !== 'All';
+                return ((item as any).paragraphBlocks || [{ heading: item.heading, text: item.paragraph, mgmt_d_keyword: item.mgmt_d_keyword, management_domain: item.management_domain, clause_type: item.clause_type, clause_type_keyword: item.clause_type_keyword }]).map((block: any, blockIdx: number) => {
                   const headingTextRaw = block.heading || '';
                   const headingText = headingTextRaw.trim();
-                  const paraText = block.text || "Text summary unavailable";
+                  let paraText = block.text || "Text summary unavailable";
                   // Only highlight keywords if this paragraph's domain matches the selected domain
                   const blockDomain = block.management_domain || '';
                   const domainMatch = activeDomain === 'All' || blockDomain === activeDomain;
                   const blockKeywords = domainMatch ? (block.mgmt_d_keyword || '').split(';').map((k: string) => k.trim()).filter((k: string) => k.length > 0) : [];
+                  
+                  // Clause type underlining: only underline if this paragraph's clause type matches
+                  const blockClauseType = block.clause_type || '';
+                  const clauseMatch = shouldUnderlineClause && blockClauseType === selectedClauseType;
+                  const clauseKeywords = clauseMatch ? (block.clause_type_keyword || '').split(';').map((k: string) => k.trim()).filter((k: string) => k.length > 0) : [];
+                  
                   // Show heading if it's different from the last one
                   const showHeading = headingText && headingText !== lastHeading;
                   if (headingText) lastHeading = headingText;
+                  
                   return (
                     <div key={blockIdx} className="whitespace-pre-line text-[11px] text-gray-600 leading-tight">
                       {showHeading && (
                         <div className="text-[10px] font-semibold text-gray-700 mb-0.5 mt-1">{headingText}</div>
                       )}
-                      {shouldHighlightKeywords && blockKeywords.length > 0 ? (
+                      {/* Apply highlights and underlines appropriately */}
+                      {shouldHighlightKeywords && blockKeywords.length > 0 && clauseKeywords.length > 0 ? (
+                        // Both management domain and clause keywords present - need combined rendering
+                        // For simplicity, show clause underline on top of domain highlight
+                        <ClauseKeywordUnderline 
+                          text={paraText} 
+                          keywords={clauseKeywords}
+                        />
+                      ) : shouldHighlightKeywords && blockKeywords.length > 0 ? (
                         <KeywordHighlight 
                           text={paraText} 
                           keywords={blockKeywords}
+                        />
+                      ) : clauseKeywords.length > 0 ? (
+                        <ClauseKeywordUnderline 
+                          text={paraText} 
+                          keywords={clauseKeywords}
                         />
                       ) : (
                         <Highlight text={paraText} term={searchTerm} />
@@ -355,7 +407,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
             {item.iucn_threat && item.iucn_threat.split(/[;,]/).filter((s: string) => s.trim()).map((threat: string, i: number) => (
               <span key={`threat-${i}`} className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded border border-green-100">{threat.trim()}</span>
             ))}
-            {item.clause_type && item.clause_type.split(/[;,]/).filter((s: string) => s.trim()).map((type: string, i: number) => (
+            {item.clause_type && item.clause_type.split(';').filter((s: string) => s.trim()).map((type: string, i: number) => (
               <span key={`type-${i}`} className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded border border-gray-200">{type.trim()}</span>
             ))}
           </div>
