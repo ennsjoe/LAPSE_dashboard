@@ -69,7 +69,7 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data }) => {
                 cursor={{ fill: '#f8fafc' }}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
               />
-              <Bar dataKey="value" fill="#5FA3D0" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="value" fill="#2C3E50" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

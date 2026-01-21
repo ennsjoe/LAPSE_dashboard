@@ -30,7 +30,6 @@ export const chartColors = [
 
 // Management domains list
 export const MANAGEMENT_DOMAINS = [
-  "All",
   "Spatial Designation",
   "Governance Administration",
   "Restoration",

@@ -26,6 +26,7 @@ const App: React.FC = () => {
   const [showAbout, setShowAbout] = useState(false);
   const [showDeployGuide, setShowDeployGuide] = useState(false);
   const [disclaimerCollapsed, setDisclaimerCollapsed] = useState(false);
+  const [infoPanelCollapsed, setInfoPanelCollapsed] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
     jurisdiction: 'All',
@@ -241,62 +242,99 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex items-center justify-between">
+      <header className="border-b border-gray-200 px-6 py-4 shadow-sm flex items-center justify-between" style={{ backgroundColor: '#2C3E50' }}>
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-black tracking-tight text-gray-900">Legislation Applicable to Pacific Salmon and Ecosystems (LAPSE)</h1>
+          <h1 className="text-xl font-black tracking-tight text-white">Legislation Applicable to Pacific Salmon and Ecosystems (LAPSE)</h1>
         </div>
         <button 
           onClick={() => setShowAbout(true)}
-          className="text-gray-400 hover:text-gray-600 transition-all hover:scale-110"
+          className="text-white hover:text-gray-200 transition-all hover:scale-110"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         </button>
       </header>
 
-      {/* Disclaimer Bar */}
-      <div className="bg-yellow-50 border-l-4 border-yellow-500 px-5 py-3 flex items-start gap-3 border-b border-yellow-100">
-        <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-        </svg>
-        {!disclaimerCollapsed && (
-          <div className="text-xs text-yellow-900 leading-relaxed flex-1">
-            <strong className="font-black" style={{ color: '#996666' }}>Disclaimer:</strong> None of the information presented in LAPSE qualifies as legal advice. The authors are aquatic biologists with limited legal training. This tool is intended for research and informational purposes only. Always consult official government sources and qualified legal professionals for authoritative legal interpretation.
+      {/* Info Panel Cluster */}
+      <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-bold text-gray-600 uppercase tracking-widest">Dashboard Info</h3>
+          <button
+            onClick={() => setInfoPanelCollapsed(!infoPanelCollapsed)}
+            className="text-xs font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-1"
+          >
+            {infoPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {infoPanelCollapsed ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              )}
+            </svg>
+          </button>
+        </div>
+
+        {!infoPanelCollapsed && (
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-start gap-3 bg-yellow-50 border border-yellow-100 px-4 py-3 rounded-xl shadow-sm w-full lg:flex-1 min-w-[260px]">
+              <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1 text-xs text-yellow-900 leading-relaxed">
+                <div className="font-black" style={{ color: '#996666' }}>Disclaimer</div>
+                {!disclaimerCollapsed && (
+                  <p className="mt-1">None of the information presented in LAPSE qualifies as legal advice. The authors are aquatic biologists with limited legal training. This tool is intended for research and informational purposes only. Always consult official government sources and qualified legal professionals for authoritative legal interpretation.</p>
+                )}
+                {disclaimerCollapsed && (
+                  <div className="font-bold">Disclaimer (click arrow to expand)</div>
+                )}
+              </div>
+              <button
+                onClick={() => setDisclaimerCollapsed(!disclaimerCollapsed)}
+                className="text-yellow-600 hover:text-yellow-800 transition-colors flex-shrink-0"
+                aria-label={disclaimerCollapsed ? "Expand disclaimer" : "Collapse disclaimer"}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {disclaimerCollapsed ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  )}
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-100 px-4 py-3 rounded-xl shadow-sm w-full sm:w-auto lg:flex-1 min-w-[260px]">
+              <svg className="w-4 h-4" style={{ color: '#996666' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+              </svg>
+              <div className="text-xs text-yellow-900">
+                <div className="font-black uppercase tracking-widest text-[11px]" style={{ color: '#996666' }}>Data Last Processed</div>
+                <div className="mt-0.5">{dataLastProcessed}</div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-yellow-900">
+                <svg className="w-4 h-4" style={{ color: '#996666' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span><strong style={{ color: '#996666' }}>Total Legislation:</strong> {totalLegislation} acts</span>
+              </div>
+            </div>
+
+            <a
+              className="flex items-center gap-3 bg-yellow-50 border border-yellow-100 px-4 py-3 rounded-xl shadow-sm w-full sm:w-auto lg:flex-1 min-w-[220px] hover:shadow-md transition-shadow"
+              href="https://ennsjoe.github.io/salmon_management_domains_compendium/LAPSE-Dashboard-About.html"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <svg className="w-5 h-5" style={{ color: '#996666' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M12 19a7 7 0 110-14 7 7 0 010 14z" />
+              </svg>
+              <div className="text-xs text-yellow-900">
+                <div className="font-black uppercase tracking-widest text-[11px]" style={{ color: '#996666' }}>About LAPSE Dashboard</div>
+                <div className="mt-0.5 text-yellow-900">Open the About page</div>
+              </div>
+            </a>
           </div>
         )}
-        {disclaimerCollapsed && (
-          <div className="text-xs text-yellow-900 font-bold flex-1">
-            Disclaimer (click to expand)
-          </div>
-        )}
-        <button
-          onClick={() => setDisclaimerCollapsed(!disclaimerCollapsed)}
-          className="text-yellow-600 hover:text-yellow-800 transition-colors flex-shrink-0"
-          aria-label={disclaimerCollapsed ? "Expand disclaimer" : "Collapse disclaimer"}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {disclaimerCollapsed ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
-            )}
-          </svg>
-        </button>
-      </div>
-      
-      {/* Data Provenance Info Bar */}
-      <div className="bg-blue-50 border-l-4 px-5 py-2.5 flex items-center gap-5 flex-wrap text-xs border-b border-blue-100" style={{ borderLeftColor: '#668899' }}>
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-          </svg>
-          <span className="text-gray-700"><strong style={{ color: '#668899' }}>Data Last Processed:</strong> {dataLastProcessed}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4" style={{ color: '#668899' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span className="text-gray-700"><strong style={{ color: '#668899' }}>Total Legislation:</strong> {totalLegislation} acts</span>
-        </div>
       </div>
 
       {/* Main content: 3-column layout */}
