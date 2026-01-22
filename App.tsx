@@ -218,8 +218,8 @@ const App: React.FC = () => {
       const item = data.find(d => d.legislation_name === filters.legislationName);
       return item?.url;
     } else if (filters.actName !== 'All') {
-      // Act is selected but no specific regulation
-      const item = data.find(d => d.act_name === filters.actName);
+      // Act is selected but no specific regulation - find the act-level entry
+      const item = data.find(d => d.act_name === filters.actName && d.legislation_type === 'Act');
       return item?.url;
     }
     return undefined;
