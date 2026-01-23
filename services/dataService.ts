@@ -9,6 +9,7 @@ import {
 
 // Cache for loaded data
 let dataCache: LegislationItem[] | null = null;
+let governanceKeywordCache: Map<string, string[]> | null = null;
 
 /**
  * Parse CSV file from URL
@@ -57,6 +58,35 @@ function extractIucnThreats(
 }
 
 /**
+ * Extract governance keywords from paragraph text for specific management domains
+ */
+function extractGovernanceKeywords(
+  paragraphText: string,
+  managementDomain: string,
+  governanceKeywordMap: Map<string, string[]>
+): string {
+  const lowerText = paragraphText.toLowerCase();
+  const domainsToCheck = managementDomain.split(';').map(d => d.trim());
+  const matchedKeywords = new Set<string>();
+  
+  // For each domain in this paragraph, check if it has governance keywords defined
+  domainsToCheck.forEach(domain => {
+    const keywords = governanceKeywordMap.get(domain.toLowerCase());
+    if (keywords) {
+      keywords.forEach(keyword => {
+        // Use word boundary matching for more accurate results
+        const regex = new RegExp(`\\b${keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+        if (regex.test(lowerText)) {
+          matchedKeywords.add(keyword);
+        }
+      });
+    }
+  });
+  
+  return Array.from(matchedKeywords).join('; ');
+}
+
+/**
  * Load all CSV files and join them into LegislationItem array
  */
 export async function loadLegislationData(): Promise<LegislationItem[]> {
@@ -95,6 +125,19 @@ export async function loadLegislationData(): Promise<LegislationItem[]> {
     iucnKeywordMap.set(row.keyword.toLowerCase(), row.iucn_l2);
   });
 
+  // Create governance keyword map (management_domain -> array of keywords)
+  const governanceKeywordMap = new Map<string, string[]>();
+  governanceKeywordRows.forEach(row => {
+    const domain = row.management_domain.toLowerCase();
+    if (!governanceKeywordMap.has(domain)) {
+      governanceKeywordMap.set(domain, []);
+    }
+    governanceKeywordMap.get(domain)!.push(row.keyword);
+  });
+
+  // Cache governance keywords for use in filtering
+  governanceKeywordCache = governanceKeywordMap;
+
   // Join paragraphs with legislation data
   const joinedData: LegislationItem[] = paragraphRows.map((para, index) => {
     const legislation = legislationMap.get(para.legislation_id);
@@ -108,9 +151,19 @@ export async function loadLegislationData(): Promise<LegislationItem[]> {
       ? extractIucnThreats(para.paragraph, iucnKeywordMap)
       : '';
 
+    // Extract governance keywords for applicable domains
+    const governanceKeywords = para.paragraph && para.management_domain
+      ? extractGovernanceKeywords(para.paragraph, para.management_domain, governanceKeywordMap)
+      : '';
+
+    // Combine existing keywords with extracted governance keywords
+    const combinedMgmtKeywords = [para.mgmt_d_keyword, governanceKeywords]
+      .filter(Boolean)
+      .join('; ');
+
     // Combine all keywords for aggregate display
     const allKeywords = [
-      para.mgmt_d_keyword,
+      combinedMgmtKeywords,
       para.clause_type_keyword,
     ].filter(Boolean).join('; ');
 
@@ -128,7 +181,7 @@ export async function loadLegislationData(): Promise<LegislationItem[]> {
       heading: para.heading || '',
       paragraph: para.paragraph || '',
       management_domain: para.management_domain || '',
-      mgmt_d_keyword: para.mgmt_d_keyword || '',
+      mgmt_d_keyword: combinedMgmtKeywords,
       clause_type: para.clause_type || '',
       clause_type_keyword: para.clause_type_keyword || '',
       actionable_type: para.actionable_type || '',
@@ -148,8 +201,55 @@ export async function loadLegislationData(): Promise<LegislationItem[]> {
 }
 
 /**
+ * Get governance keywords for a specific management domain
+ */
+export function getGovernanceKeywordsForDomain(domain: string): string[] {
+  if (!governanceKeywordCache) {
+    return [];
+  }
+  return governanceKeywordCache.get(domain.toLowerCase()) || [];
+}
+
+/**
+ * Filter keywords by matching against governance keywords for a specific domain
+ */
+export function filterKeywordsByDomain(
+  allKeywords: string,
+  paragraphText: string,
+  targetDomain: string
+): string[] {
+  if (!targetDomain || targetDomain === 'All' || !governanceKeywordCache) {
+    // If no specific domain selected, return all keywords
+    return allKeywords.split(';').map(k => k.trim()).filter(k => k.length > 0);
+  }
+
+  // Check if this domain has governance keywords defined
+  const domainKeywords = governanceKeywordCache.get(targetDomain.toLowerCase());
+  const isGovernanceDomain = domainKeywords && domainKeywords.length > 0;
+  
+  if (!isGovernanceDomain) {
+    // Not a governance domain, return all keywords
+    return allKeywords.split(';').map(k => k.trim()).filter(k => k.length > 0);
+  }
+
+  // For governance domains, filter keywords to only those belonging to the target domain
+  const lowerText = paragraphText.toLowerCase();
+  const matchedKeywords: string[] = [];
+
+  domainKeywords.forEach(keyword => {
+    const regex = new RegExp(`\\b${keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+    if (regex.test(lowerText)) {
+      matchedKeywords.push(keyword);
+    }
+  });
+
+  return matchedKeywords;
+}
+
+/**
  * Clear the data cache (useful for testing or reloading)
  */
 export function clearCache(): void {
   dataCache = null;
+  governanceKeywordCache = null;
 }

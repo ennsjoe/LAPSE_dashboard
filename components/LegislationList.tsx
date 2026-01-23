@@ -2,6 +2,7 @@
 import React from 'react';
 import { LegislationItem } from '../types';
 import { JURISDICTION_COLORS } from '../constants';
+import { filterKeywordsByDomain } from '../services/dataService';
 
 interface LegislationListProps {
   items: LegislationItem[];
@@ -320,7 +321,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
                   {shouldHighlightKeywords ? (
                     <KeywordHighlight 
                       text={item.heading} 
-                      keywords={(item.mgmt_d_keyword || '').split(';').map(k => k.trim()).filter(k => k.length > 0)}
+                      keywords={filterKeywordsByDomain(item.mgmt_d_keyword || '', item.paragraph || item.heading, activeDomain)}
                     />
                   ) : (
                     <Highlight text={item.heading} term={searchTerm} />
@@ -335,7 +336,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
                     {shouldHighlightKeywords ? (
                       <KeywordHighlight 
                         text={item.heading} 
-                        keywords={(item.mgmt_d_keyword || '').split(';').map(k => k.trim()).filter(k => k.length > 0)}
+                        keywords={filterKeywordsByDomain(item.mgmt_d_keyword || '', item.paragraph || item.heading, activeDomain)}
                       />
                     ) : (
                       <Highlight text={item.heading} term={searchTerm} />
@@ -359,7 +360,11 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
                   // Only highlight keywords if this paragraph's domain matches the selected domain
                   const blockDomain = block.management_domain || '';
                   const domainMatch = activeDomain === 'All' || blockDomain === activeDomain;
-                  const blockKeywords = domainMatch ? (block.mgmt_d_keyword || '').split(';').map((k: string) => k.trim()).filter((k: string) => k.length > 0) : [];
+                  
+                  // Use filterKeywordsByDomain to get only keywords for the active domain
+                  const blockKeywords = domainMatch 
+                    ? filterKeywordsByDomain(block.mgmt_d_keyword || '', paraText, activeDomain)
+                    : [];
                   
                   // Clause type underlining: only underline if this paragraph's clause type matches
                   const blockClauseType = block.clause_type || '';
