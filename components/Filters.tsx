@@ -15,7 +15,7 @@ const Filters: React.FC<FiltersProps> = ({ filters, acts, legislations, onFilter
   return (
     <div className="flex flex-wrap items-end gap-4">
       <div className="flex-1 min-w-[180px]">
-        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Search Keywords</label>
+        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Search Paragraphs</label>
         <div className="relative">
           <input 
             type="text"

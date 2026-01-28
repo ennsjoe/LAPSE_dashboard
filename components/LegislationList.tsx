@@ -243,15 +243,15 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
     }
   };
 
-  // Check if no domain and no act/regulation are selected
-  const noFiltersSelected = activeDomain === 'All' && selectedActName === 'All' && selectedLegislationName === 'All';
+  // Check if no domain and no act/regulation are selected AND no search term
+  const noFiltersSelected = activeDomain === 'All' && selectedActName === 'All' && selectedLegislationName === 'All' && !searchTerm;
 
   if (noFiltersSelected) {
     return (
       <div className="py-16 text-center bg-gray-300 rounded border border-gray-400">
         <svg className="w-12 h-12 mx-auto text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         <p className="text-gray-700 font-bold text-sm mb-2">Select a Starting Point</p>
-        <p className="text-gray-600 text-xs">Choose a Management Domain or an Act to view sections and paragraphs.</p>
+        <p className="text-gray-600 text-xs">Choose a Management Domain, an Act, or enter a search term to view sections and paragraphs.</p>
       </div>
     );
   }
