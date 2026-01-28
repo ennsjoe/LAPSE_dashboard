@@ -592,7 +592,7 @@ const App: React.FC = () => {
       {/* Main content: 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left column: Domain sidebar - hidden on md and below, visible on lg+ */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:flex h-full">
           <Sidebar 
             activeDomain={filters.managementDomain} 
             onDomainSelect={(d) => handleFilterChange('managementDomain', d)}

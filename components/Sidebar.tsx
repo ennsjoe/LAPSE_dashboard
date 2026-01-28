@@ -16,9 +16,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
     ? availableDomains.map(d => d.name) 
     : MANAGEMENT_DOMAINS;
   return (
-    <aside className="w-48 lg:w-56 border-r border-gray-200 flex-shrink-0 flex flex-col shadow-sm text-white" style={{ backgroundColor: '#2C3E50' }}>
+    <aside className="w-48 lg:w-56 h-full border-r border-gray-200 flex flex-col shadow-sm text-white overflow-hidden" style={{ backgroundColor: '#2C3E50' }}>
       {/* Search section */}
-      <div className="px-3 py-3 border-b border-gray-200">
+      <div className="px-3 py-3 border-b border-gray-200 flex-shrink-0">
         <label className="block text-[10px] font-bold text-white uppercase tracking-widest mb-2">Search Keywords</label>
         <div className="relative">
           <input 
@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
         </div>
       </div>
 
-      <div className="px-4 py-3 border-b border-gray-200">
+      <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
         <h3 className="text-sm font-bold text-white uppercase tracking-wider">Management Domains</h3>
       </div>
       
@@ -59,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
             <button
               key={domain}
               onClick={() => onDomainSelect(domain)}
-              className={`w-full text-left px-3 py-2.5 rounded text-sm transition-all ${
+              className={`w-full text-left px-3 py-2.5 rounded text-sm transition-all break-words ${
                 activeDomain === domain
                   ? 'text-white font-semibold shadow-sm'
                   : 'text-white hover:bg-white/10 font-normal'
