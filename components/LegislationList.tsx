@@ -234,6 +234,17 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
 
   const allExpanded = groupedItems.length > 0 && expandedItems.size === groupedItems.length;
   const showHeadingAsTitle = (selectedActName && selectedActName !== 'All') || (selectedLegislationName && selectedLegislationName !== 'All');
+  const getLegislationDisplayName = (item: LegislationItem) => {
+    const type = (item.legislation_type || '').toLowerCase();
+    const isAct = type.includes('act');
+    if (!isAct && item.legislation_name && item.legislation_name.trim()) {
+      return item.legislation_name;
+    }
+    if (item.act_name && item.act_name.trim()) {
+      return item.act_name;
+    }
+    return item.legislation_name || '';
+  };
 
   const handleExpandAll = () => {
     if (allExpanded) {
@@ -330,7 +341,7 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
               ) : (
                 <>
                   <div className="text-xs font-bold text-gray-800 truncate">
-                    <Highlight text={item.act_name} term={searchTerm} />
+                    <Highlight text={getLegislationDisplayName(item)} term={searchTerm} />
                   </div>
                   <div className="text-[11px] text-gray-600 truncate">
                     {shouldHighlightKeywords ? (
@@ -449,4 +460,4 @@ const LegislationList: React.FC<LegislationListProps> = ({ items, searchTerm, ac
   );
 };
 
-export default LegislationList;
+export default React.memo(LegislationList);

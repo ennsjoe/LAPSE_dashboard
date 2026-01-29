@@ -7,10 +7,11 @@ interface SidebarProps {
   onDomainSelect: (domain: string) => void;
   searchTerm: string;
   onSearchChange: (value: string) => void;
+  onSearchSubmit?: () => void;
   availableDomains?: Array<{ name: string; count: number }>;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchTerm, onSearchChange, availableDomains }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchTerm, onSearchChange, onSearchSubmit, availableDomains }) => {
   // Use availableDomains if provided, otherwise fall back to MANAGEMENT_DOMAINS
   const domainsToDisplay = availableDomains && availableDomains.length > 0 
     ? availableDomains.map(d => d.name) 
@@ -25,6 +26,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeDomain, onDomainSelect, searchT
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onSearchSubmit?.();
+              }
+            }}
             placeholder="Enter keywords..."
             className="w-full bg-white border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-blue-400 outline-none transition-all"
           />

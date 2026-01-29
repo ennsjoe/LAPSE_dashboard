@@ -43,12 +43,8 @@ const App: React.FC = () => {
     discretionType: 'All'
   });
 
-  // Debounce search term updates
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setFilters(prev => ({ ...prev, searchTerm: localSearchTerm }));
-    }, 300);
-    return () => clearTimeout(timer);
+  const applySearchTerm = useCallback(() => {
+    setFilters(prev => ({ ...prev, searchTerm: localSearchTerm }));
   }, [localSearchTerm]);
 
   const resetFilters = useCallback(() => {
@@ -92,12 +88,78 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  const filteredData = useMemo(() => {
+  const itemIndex = useMemo(() => {
+    const index = new Map<number, {
+      searchText: string;
+      domainValues: string[];
+      clauseValues: string[];
+      actionableValues: string[];
+      officialValues: string[];
+      discretionValues: string[];
+    }>();
+
+    data.forEach(item => {
+      index.set(item.paragraph_id, {
+        searchText: `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase(),
+        domainValues: (item.management_domain || '').split(';').map(d => d.trim().toLowerCase()).filter(Boolean),
+        clauseValues: (item.clause_type || '').split(';').map(v => v.trim().toLowerCase()).filter(Boolean),
+        actionableValues: (item.actionable_type || '').split(';').map(v => v.trim().toLowerCase()).filter(Boolean),
+        officialValues: (item.responsible_official || '').split(';').map(v => v.trim().toLowerCase()).filter(Boolean),
+        discretionValues: (item.discretion_type || '').split(';').map(v => v.trim().toLowerCase()).filter(Boolean)
+      });
+    });
+
+    return index;
+  }, [data]);
+
+  const groupedSections = useMemo(() => {
+    const groups = new Map<string, LegislationItem[]>();
+    data.forEach(item => {
+      const sectionKey = item.section && item.section.trim() ? item.section.trim() : `para-${item.paragraph_id}`;
+      const key = `${item.legislation_id}|${sectionKey}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    });
+    return Array.from(groups.values());
+  }, [data]);
+
+  const contentMatches = useMemo(() => {
     const term = filters.searchTerm.toLowerCase().trim();
+    const termRequired = !!term;
     const selectedDomain = filters.managementDomain;
 
+    const clauseRequired = filters.clauseType !== 'All';
+    const actionableRequired = filters.actionableType !== 'All';
+    const officialRequired = filters.responsibleOfficial !== 'All';
+    const discretionRequired = filters.discretionType !== 'All';
+
+    const noContentFilters = selectedDomain === 'All' && !termRequired && !clauseRequired && !actionableRequired && !officialRequired && !discretionRequired;
+    if (noContentFilters) {
+      return null;
+    }
+
+    const matches = new Map<number, boolean>();
+    data.forEach(item => {
+      const idx = itemIndex.get(item.paragraph_id);
+      if (!idx) return;
+
+      const domainMatch = selectedDomain === 'All' || idx.domainValues.some(d => d === selectedDomain.toLowerCase());
+      const termMatch = !termRequired || idx.searchText.includes(term);
+
+      const clauseMatch = !clauseRequired || idx.clauseValues.some(v => v === filters.clauseType.toLowerCase());
+      const actionableMatch = !actionableRequired || idx.actionableValues.some(v => v === filters.actionableType.toLowerCase());
+      const officialMatch = !officialRequired || idx.officialValues.some(v => v === filters.responsibleOfficial.toLowerCase());
+      const discretionMatch = !discretionRequired || idx.discretionValues.some(v => v === filters.discretionType.toLowerCase());
+
+      matches.set(item.paragraph_id, domainMatch && termMatch && clauseMatch && actionableMatch && officialMatch && discretionMatch);
+    });
+
+    return matches;
+  }, [data, itemIndex, filters.searchTerm, filters.managementDomain, filters.clauseType, filters.actionableType, filters.responsibleOfficial, filters.discretionType]);
+
+  const filteredData = useMemo(() => {
     // First pass: apply strict filters (jurisdiction, act/reg, type constraint). Do not filter out by management domain yet.
-    const base = data.filter(item => {
+    const isItemInBase = (item: LegislationItem) => {
       const jMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
       const aMatch = filters.actName === 'All' || item.act_name === filters.actName;
       const lMatch = filters.legislationName === 'All' || item.legislation_name === filters.legislationName;
@@ -109,66 +171,32 @@ const App: React.FC = () => {
         ? item.legislation_type === 'Act' // Show only Acts when no regulation selected
         : true;
       return jMatch && aMatch && lMatch && typeMatch;
-    });
-
-    // Group by legislation + section key
-    const groups = new Map<string, LegislationItem[]>();
-    base.forEach(item => {
-      const sectionKey = item.section && item.section.trim() ? item.section.trim() : `para-${item.paragraph_id}`;
-      const key = `${item.legislation_id}|${sectionKey}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(item);
-    });
+    };
 
     // Decide inclusion per section: if ANY item in a section matches filters, include ALL items in that section
     const results: LegislationItem[] = [];
-    groups.forEach(group => {
-      const domainRequired = selectedDomain !== 'All';
-      const termRequired = !!term;
-      const clauseRequired = filters.clauseType !== 'All';
-      const actionableRequired = filters.actionableType !== 'All';
-      const officialRequired = filters.responsibleOfficial !== 'All';
-      const discretionRequired = filters.discretionType !== 'All';
+    groupedSections.forEach(group => {
+      const baseItems = group.filter(isItemInBase);
+      if (baseItems.length === 0) return;
 
-      // Check if ANY item in the group matches the filters
-      const hasMatchingItem = group.some(item => {
-        // Handle semicolon-separated management domains
-        const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
-        const domainMatch = !domainRequired || domainValues.some(d => d.toLowerCase() === selectedDomain.toLowerCase());
-        const haystack = `${item.act_name} ${item.legislation_name} ${item.heading} ${item.paragraph}`.toLowerCase();
-        const termMatch = !termRequired || haystack.includes(term);
-        
-        // Handle semicolon-separated values in clause filters
-        const clauseValues = (item.clause_type || '').split(';').map(v => v.trim()).filter(Boolean);
-        const clauseMatch = !clauseRequired || clauseValues.some(v => v.toLowerCase() === filters.clauseType.toLowerCase());
-        
-        const actionableValues = (item.actionable_type || '').split(';').map(v => v.trim()).filter(Boolean);
-        const actionableMatch = !actionableRequired || actionableValues.some(v => v.toLowerCase() === filters.actionableType.toLowerCase());
-        
-        const officialValues = (item.responsible_official || '').split(';').map(v => v.trim()).filter(Boolean);
-        const officialMatch = !officialRequired || officialValues.some(v => v.toLowerCase() === filters.responsibleOfficial.toLowerCase());
-        
-        const discretionValues = (item.discretion_type || '').split(';').map(v => v.trim()).filter(Boolean);
-        const discretionMatch = !discretionRequired || discretionValues.some(v => v.toLowerCase() === filters.discretionType.toLowerCase());
-        
-        return domainMatch && termMatch && clauseMatch && actionableMatch && officialMatch && discretionMatch;
+      const hasMatchingItem = baseItems.some(item => {
+        if (!contentMatches) return true;
+        return contentMatches.get(item.paragraph_id) === true;
       });
 
-      // If any item matches, include ALL items from this section
       if (hasMatchingItem) {
-        results.push(...group);
+        results.push(...baseItems);
       }
     });
 
     return results;
-  }, [filters, data]);
+  }, [filters.jurisdiction, filters.actName, filters.legislationName, groupedSections, contentMatches]);
 
   const availableActs = useMemo<FilterOption[]>(() => {
     const context = data.filter(item => {
-      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
-      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
-      return domainMatch && jurisdictionMatch;
+      const contentMatch = contentMatches ? contentMatches.get(item.paragraph_id) === true : true;
+      return jurisdictionMatch && contentMatch;
     });
     // Count items per act
     const actCounts = new Map<string, number>();
@@ -183,18 +211,17 @@ const App: React.FC = () => {
       ...uniqueActs.map(name => ({ name, count: actCounts.get(name) || 0 }))
     ];
     return result.map(item => item.name === 'All' ? { name: 'All', displayName: 'None Selected', count: item.count } : { ...item, displayName: item.name });
-  }, [data, filters.jurisdiction, filters.managementDomain]);
+  }, [data, filters.jurisdiction, contentMatches]);
 
   const availableLegislation = useMemo<FilterOption[]>(() => {
     const context = data.filter(item => {
-      const domainValues = (item.management_domain || '').split(';').map(d => d.trim()).filter(Boolean);
-      const domainMatch = filters.managementDomain === 'All' || domainValues.some(d => d.toLowerCase() === filters.managementDomain.toLowerCase());
       const jurisdictionMatch = filters.jurisdiction === 'All' || item.jurisdiction === filters.jurisdiction;
+      const contentMatch = contentMatches ? contentMatches.get(item.paragraph_id) === true : true;
       const actMatch = filters.actName === 'All' || item.act_name === filters.actName;
       // Include regulations, codes, and orders (exclude Acts)
       const type = (item.legislation_type || '').toLowerCase();
       const isRegulation = type !== 'act' && (type.includes('regulation') || type.includes('code') || type.includes('order') || type.length > 0);
-      return domainMatch && jurisdictionMatch && actMatch && isRegulation;
+      return jurisdictionMatch && contentMatch && actMatch && isRegulation;
     });
     // Count items per legislation/regulation
     const regCounts = new Map<string, number>();
@@ -209,7 +236,7 @@ const App: React.FC = () => {
       ...uniqueRegs.map(name => ({ name, count: regCounts.get(name) || 0 }))
     ];
     return result.map(item => item.name === 'All' ? { name: 'All', displayName: 'None Selected', count: item.count } : { ...item, displayName: item.name });
-  }, [data, filters.jurisdiction, filters.actName, filters.managementDomain]);
+  }, [data, filters.jurisdiction, filters.actName, contentMatches]);
 
   const selectedLegislationUrl = useMemo(() => {
     // Get the URL of the currently selected legislation/act
@@ -567,7 +594,7 @@ const App: React.FC = () => {
                 <svg className="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <span><strong className="text-sky-700">Total Legislation:</strong> {totalLegislation} acts</span>
+                <span><strong className="text-sky-700">Total Legislation:</strong> {totalLegislation} statutes</span>
               </div>
             </div>
 
@@ -598,6 +625,7 @@ const App: React.FC = () => {
             onDomainSelect={(d) => handleFilterChange('managementDomain', d)}
             searchTerm={localSearchTerm}
             onSearchChange={setLocalSearchTerm}
+            onSearchSubmit={applySearchTerm}
             availableDomains={availableDomains}
           />
         </div>

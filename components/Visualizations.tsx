@@ -172,4 +172,4 @@ const Visualizations: React.FC<VisualizationsProps> = ({ data, selectedDomain })
   );
 };
 
-export default Visualizations;
+export default React.memo(Visualizations);
